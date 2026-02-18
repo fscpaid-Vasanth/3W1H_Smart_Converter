@@ -40,7 +40,12 @@ app.use("/api/analyze", authenticateUser, analyzeRoutes);
 app.use("/api/subscription", authenticateUser, subscriptionRoutes);
 
 
-/* ROOT - Serves dashboard (will check auth on client side) */
+/* DASHBOARD */
+app.get("/dashboard", (req, res) => {
+  res.sendFile(path.join(__dirname, "../public/dashboard.html"));
+});
+
+/* ROOT - Serves landing page */
 app.get("/", (req, res) => {
   res.sendFile(path.join(__dirname, "../public/index.html"));
 });

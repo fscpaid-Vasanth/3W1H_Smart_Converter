@@ -1,0 +1,904 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <title>3W1H Smart Converter</title>
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+
+  <style>
+    body {
+      font-family: Inter, sans-serif
+    }
+
+    .hidden {
+      display: none
+    }
+
+    #aiOverlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(15, 23, 42, .92);
+      z-index: 50;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      color: white
+    }
+
+    .pulse {
+      animation: pulse 1.5s infinite
+    }
+
+    @keyframes pulse {
+      0% {
+        opacity: .4
+      }
+
+      50% {
+        opacity: 1
+      }
+
+      100% {
+        opacity: .4
+      }
+    }
+
+    .mic-pulse {
+      animation: micPulse 1s infinite
+    }
+
+    @keyframes micPulse {
+      0% {
+        transform: scale(1);
+        opacity: .6
+      }
+
+      50% {
+        transform: scale(1.15);
+        opacity: 1
+      }
+
+      100% {
+        transform: scale(1);
+        opacity: .6
+      }
+    }
+  </style>
+</head>
+
+<body class="bg-gray-100">
+
+  <!-- OVERLAY -->
+  <div id="aiOverlay" class="flex flex-col gap-3 text-center">
+    <div class="text-3xl pulse">🤖 Digital Transformation in Progress</div>
+    <div id="overlayText" class="text-sm text-gray-300">Processing…</div>
+  </div>
+
+  <!-- ===== INPUT GUIDANCE NOTE MODAL ===== -->
+  <div id="guidanceModal" class="hidden fixed inset-0 bg-black/60 z-50 flex items-center justify-center">
+    <div class="bg-white w-[500px] rounded-xl shadow-2xl p-6 mx-4">
+      <div class="text-center">
+        <div class="text-5xl mb-3">📋</div>
+        <h2 class="text-xl font-bold text-blue-700 mb-3">Important: Before You Begin</h2>
+        <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4 text-left">
+          <p class="text-sm text-gray-700 mb-3">
+            <span class="font-bold text-blue-800">📌 Please refer to the sample inputs</span> at the bottom of the input
+            panel for a perfect input statement format.
+          </p>
+          <p class="text-sm text-gray-700 mb-3">
+            Your input should follow the <strong>Problem → Root Causes → Action Plan</strong> structure for best 3W1H
+            results.
+          </p>
+          <div class="bg-yellow-50 border border-yellow-300 rounded-lg p-3">
+            <p class="text-sm text-yellow-800 font-semibold">⚠️ Input must be in English language only.</p>
+          </div>
+        </div>
+        <button onclick="closeGuidanceModal()"
+          class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2.5 rounded-lg transition text-sm">
+          ✅ I Understand — Continue to Dashboard
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= SUBSCRIPTION MODAL ================= -->
+  <div id="subscriptionModal" class="hidden fixed inset-0 bg-black/60 z-50 flex items-center justify-center">
+
+    <div class="bg-white w-[750px] rounded-lg shadow-xl p-6">
+      <div class="flex justify-between items-center mb-4">
+        <h2 class="text-xl font-semibold text-blue-600">📦 Subscription Plans</h2>
+        <button onclick="closeSubscription()" class="text-xl">✖</button>
+      </div>
+
+      <div class="grid grid-cols-3 gap-4">
+
+        <!-- BASIC -->
+        <div class="border rounded p-4 text-center">
+          <h3 class="font-semibold text-lg mb-1">Basic</h3>
+          <p class="text-2xl font-bold mb-1">₹499</p>
+          <p class="text-xs text-gray-500 mb-3">500 Credits / Month</p>
+          <ul class="text-xs text-gray-600 mb-4 space-y-1">
+            <li>✔ Write Input (10 Credits/Conversion)</li>
+            <li>✔ Audio Upload (20 Credits/Conversion)</li>
+            <li>✔ Limited Live Audio (30 Credits/Conversion)</li>
+          </ul>
+          <button onclick="startSubscription('plan_SGJ9lQs5QEKndd')"
+            class="w-full bg-blue-600 text-white py-1 rounded text-sm">
+            Subscribe
+          </button>
+        </div>
+
+        <!-- PRO -->
+        <div class="border-2 border-green-600 rounded p-4 text-center">
+          <h3 class="font-semibold text-lg mb-1 text-green-700">Pro</h3>
+          <p class="text-2xl font-bold mb-1">₹999</p>
+          <p class="text-xs text-gray-500 mb-3">1200 Credits / Month</p>
+          <ul class="text-xs text-gray-600 mb-4 space-y-1">
+            <li>✔ All Input Modes</li>
+            <li>✔ Priority Processing</li>
+            <li>✔ Unlimited Exports</li>
+          </ul>
+          <button onclick="startSubscription('plan_SGJCJCot5JdhOo')"
+            class="w-full bg-green-600 text-white py-1 rounded text-sm">
+            Subscribe
+          </button>
+        </div>
+
+        <!-- Premium -->
+        <div class="border rounded p-4 text-center">
+          <h3 class="font-semibold text-lg mb-1">Premium</h3>
+          <p class="text-2xl font-bold mb-1">₹1999</p>
+          <p class="text-xs text-gray-500 mb-3">Unlimited Credits / Month</p>
+          <ul class="text-xs text-gray-600 mb-4 space-y-1">
+            <li>✔ Unlimited Usage</li>
+            <li>✔ Dedicated Support</li>
+            <li>✔ Custom Integrations</li>
+          </ul>
+          <button onclick="startSubscription('plan_SGJDEt9DtLott3')"
+            class="w-full bg-purple-600 text-white py-1 rounded text-sm">
+            Subscribe
+          </button>
+        </div>
+
+      </div>
+    </div>
+  </div>
+  <!-- ================= END SUBSCRIPTION MODAL ================= -->
+
+  <header class="bg-white shadow px-6 py-4 flex justify-between items-center">
+    <h1 class="text-xl font-semibold text-blue-600">3W1H Smart Converter</h1>
+
+    <div class="flex items-center gap-3">
+      <div class="bg-purple-50 px-3 py-1 rounded border text-sm">
+        👤 <span id="userEmail">Loading...</span>
+      </div>
+      <div class="bg-blue-50 px-3 py-1 rounded border text-sm">
+        💰 Credits: <span id="creditBalance">5</span>
+      </div>
+      <button onclick="openSubscription()" class="bg-indigo-600 text-white px-3 py-1 rounded text-xs font-semibold">
+        📦 Subscription
+      </button>
+      <button onclick="handleLogout()"
+        class="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded text-xs font-semibold">
+        🚪 Logout
+      </button>
+
+    </div>
+
+  </header>
+
+  <main class="p-6 flex gap-6">
+
+    <!-- LEFT PANEL -->
+    <section class="bg-white w-[40%] p-4 rounded shadow">
+      <h2 class="font-semibold mb-3">Input Configuration</h2>
+
+      <div class="flex gap-6 mb-4 text-sm">
+        <label><input type="radio" name="inputType" value="text" checked> Write</label>
+        <label><input type="radio" name="inputType" value="audio"> Audio</label>
+        <label><input type="radio" name="inputType" value="live"> Live</label>
+      </div>
+
+      <div id="textSection">
+        <textarea id="textInput" rows="5" class="w-full border p-2 rounded"
+          placeholder="Write root cause / incident statement..."></textarea>
+      </div>
+
+      <div id="audioSection" class="hidden">
+        <input type="file" id="audioFile" accept=".wav,.mp3,.m4a,.webm" class="w-full border p-2 rounded">
+      </div>
+
+      <div id="liveSection" class="hidden border p-6 rounded bg-gradient-to-b from-gray-50 to-white">
+        <div class="text-sm font-semibold mb-4 text-center text-gray-700">🎙 Live Audio Recording</div>
+
+        <!-- Large Mic Icon -->
+        <div class="flex flex-col items-center mb-4">
+          <div id="micIcon"
+            class="w-24 h-24 rounded-full bg-red-50 border-2 border-red-200 flex items-center justify-center mb-3 transition-all duration-300">
+            <svg class="w-12 h-12 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
+            </svg>
+          </div>
+          <div id="timer" class="text-lg font-mono font-bold text-gray-700 mb-1">00:00</div>
+        </div>
+
+        <!-- Audio Level Bar -->
+        <div class="w-full bg-gray-200 h-2 rounded mb-4 overflow-hidden">
+          <div id="levelBar" class="h-2 bg-red-500 w-0 transition-all"></div>
+        </div>
+
+        <!-- Start / Stop Buttons -->
+        <div class="flex justify-center gap-3 mb-4">
+          <button id="startRec"
+            class="bg-red-500 hover:bg-red-600 text-white px-5 py-2 text-sm rounded-lg font-semibold flex items-center gap-2 transition">
+            <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+              <circle cx="12" cy="12" r="8" />
+            </svg>
+            Start Recording
+          </button>
+          <button id="stopRec"
+            class="bg-gray-600 hover:bg-gray-700 text-white px-5 py-2 text-sm rounded-lg font-semibold flex items-center gap-2 transition"
+            disabled>
+            <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+              <rect x="6" y="6" width="12" height="12" rx="1" />
+            </svg>
+            Stop Recording
+          </button>
+        </div>
+
+        <!-- Tagline / Help Text -->
+        <div class="text-center bg-blue-50 border border-blue-100 rounded-lg px-3 py-2">
+          <p class="text-xs text-blue-600 font-medium">💡 If any error occurs, please use the mic clearly — with or
+            without a headset.</p>
+          <p class="text-xs text-gray-400 mt-1">Supported: Chrome, Edge, Firefox | Speak clearly for best results</p>
+        </div>
+      </div>
+
+      <button id="convertBtn" class="w-full bg-blue-600 text-white py-2 rounded mt-4 font-semibold">
+        Convert to the 3W1H
+      </button>
+
+      <!-- SAMPLE INPUTS SECTION -->
+      <div class="mt-4 p-3 bg-gray-50 rounded border border-gray-200">
+        <div class="text-xs font-semibold text-gray-600 mb-2">💡 Sample Input Examples:</div>
+
+        <div class="text-xs text-gray-500 space-y-2">
+          <div class="bg-white p-2 rounded border border-gray-100">
+            <div class="font-medium text-gray-700 mb-1">Cold Storage Failure:</div>
+            <div class="italic">"<strong>Problem:</strong> Refrigeration unit failed from 4°C to 15°C on Feb 12 at 6:30
+              AM. <strong>Root Causes:</strong> Compressor motor failure. <strong>Action Plan:</strong> Maintenance team
+              replaced compressor in 3 hours, saving ₹2.5L dairy stock."</div>
+          </div>
+
+          <div class="bg-white p-2 rounded border border-gray-100">
+            <div class="font-medium text-gray-700 mb-1">Food Safety Incident:</div>
+            <div class="italic">"<strong>Problem:</strong> Fresh produce contaminated from proper storage to compromised
+              on Mar 5 evening shift. <strong>Root Causes:</strong> Raw meat packaging leaked onto vegetable display.
+              <strong>Action Plan:</strong> Store supervisor removed 25kg affected items, sanitized area in 45 mins."
+            </div>
+          </div>
+
+          <div class="bg-white p-2 rounded border border-gray-100">
+            <div class="font-medium text-gray-700 mb-1">Production Line Stoppage:</div>
+            <div class="italic">"<strong>Problem:</strong> Assembly line stopped from 45 units/hour to 0 units/hour on
+              Feb 8 at 2:15 PM. <strong>Root Causes:</strong> Robotic welding arm sensor malfunction. <strong>Action
+                Plan:</strong> Engineering team recalibrated sensor in 90 mins, resumed production saving 68 units."
+            </div>
+          </div>
+        </div>
+      </div>
+      </div>
+      </div>
+    </section>
+
+    <!-- RIGHT PANEL -->
+    <section class="bg-white w-[60%] p-6 rounded shadow">
+
+      <div class="flex justify-between mb-3">
+        <button onclick="clearOutput()" class="bg-orange-500 text-white text-xs px-3 py-1 rounded">🧹 Clear</button>
+
+        <div class="flex gap-2">
+          <button onclick="exportExcel('resultTable','Investigation_Analysis.xlsx')"
+            class="bg-red-600 text-white text-xs px-3 py-1 rounded">⬇ Export Investigation</button>
+
+          <button onclick="exportExcel('professionalTable','Professional_Analysis.xlsx')"
+            class="bg-green-600 text-white text-xs px-3 py-1 rounded">⬇ Export Professional</button>
+        </div>
+      </div>
+
+      <div id="subscriptionCard"
+        class="bg-blue-50 border border-blue-200 px-4 py-3 rounded shadow-sm text-sm hidden flex justify-between items-center mb-6">
+        <div>
+          <div id="subPlan" class="font-bold text-blue-800"></div>
+          <div id="subExpiry" class="text-xs text-gray-500 mt-0.5"></div>
+        </div>
+        <button onclick="openSubscription()"
+          class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded text-xs font-semibold transition-colors">
+          🚀 Next Plan Upgrade
+        </button>
+      </div>
+
+
+
+
+      <!-- LANGUAGE INFO DISPLAY -->
+      <div id="languageInfo" class="bg-purple-50 border border-purple-200 px-3 py-2 rounded text-xs mb-4 hidden">
+        <span class="font-bold text-purple-800">🌍 Language:</span>
+        <span id="detectedLang" class="font-semibold"></span>
+        <span id="translationStatus" class="ml-2 text-purple-600"></span>
+      </div>
+
+      <div id="transcriptDisplay"
+        class="bg-gray-100 border border-gray-200 px-3 py-2 rounded text-xs italic mb-4 hidden">
+        <span class="font-bold not-italic">Captured Transcript:</span> <span id="transcriptText"></span>
+      </div>
+
+      <h2 class="font-semibold mb-2">Investigation Analysis</h2>
+      <table id="resultTable" class="w-full text-xs border mb-6">
+        <thead class="bg-yellow-100">
+          <tr>
+            <th>#</th>
+            <th>What</th>
+            <th>From</th>
+            <th>To</th>
+            <th>When</th>
+            <th>Who</th>
+            <th>How</th>
+          </tr>
+        </thead>
+        <tbody id="resultBody"></tbody>
+      </table>
+
+      <h2 class="font-semibold mb-2 text-green-700">Professional Analysis Statement (3W1H)</h2>
+      <table id="professionalTable" class="w-full text-xs border">
+        <thead class="bg-green-100">
+          <tr>
+            <th>#</th>
+            <th>What</th>
+            <th>From</th>
+            <th>To</th>
+            <th>When</th>
+            <th>Who</th>
+            <th>How</th>
+          </tr>
+        </thead>
+        <tbody id="professionalBody"></tbody>
+      </table>
+
+    </section>
+  </main>
+
+  <script>
+    /* ===== SUBSCRIPTION ===== */
+    let totalPlanCredits = 0; // Will be set from subscription data
+
+    function openSubscription() {
+      // Lock plan change until 90% of credits are consumed
+      if (totalPlanCredits > 0 && !isUnlimited) {
+        const usedPercent = ((totalPlanCredits - credits) / totalPlanCredits) * 100;
+        if (usedPercent < 90) {
+          alert(`⚠️ Plan change is locked until you consume 90% of your credits.\n\nCurrently used: ${usedPercent.toFixed(0)}% (${totalPlanCredits - credits} of ${totalPlanCredits} credits).\nYou need to use at least ${Math.ceil(totalPlanCredits * 0.9) - (totalPlanCredits - credits)} more credits.`);
+          return;
+        }
+      }
+      subscriptionModal.classList.remove("hidden");
+    }
+    function closeSubscription() { subscriptionModal.classList.add("hidden"); }
+
+    /* ===== GUIDANCE MODAL ===== */
+    function closeGuidanceModal() { document.getElementById('guidanceModal').classList.add('hidden'); }
+    function showGuidanceModal() { document.getElementById('guidanceModal').classList.remove('hidden'); }
+
+
+    /* ===== CREDIT ===== */
+    let credits = 0;
+    let isUnlimited = false;
+
+    creditBalance.textContent = credits;
+    function deduct(amount) {
+      if (isUnlimited) return true;
+      if (credits < amount) { alert("Insufficient credits. Recharge required."); return false; }
+      credits -= amount; creditBalance.textContent = credits; return true;
+    }
+
+    /* ===== OVERLAY ===== */
+    const show = t => { overlayText.textContent = t; aiOverlay.style.display = "flex" };
+    const hide = () => aiOverlay.style.display = "none";
+
+    /* ===== SECTION TOGGLE ===== */
+    document.querySelectorAll("input[name=inputType]").forEach(r => {
+      r.onchange = () => {
+        textSection.classList.add("hidden");
+        audioSection.classList.add("hidden");
+        liveSection.classList.add("hidden");
+        if (r.value === "text") textSection.classList.remove("hidden");
+        if (r.value === "audio") audioSection.classList.remove("hidden");
+        if (r.value === "live") liveSection.classList.remove("hidden");
+      };
+    });
+
+    /* ===== RESPONSE NORMALIZER ===== */
+    function extractRows(res) {
+      console.log("📥 EXTRACTING ROWS FROM:", res);
+      if (Array.isArray(res)) return res;
+      if (Array.isArray(res?.rows)) return res.rows;
+      if (Array.isArray(res?.data)) return res.data;
+      if (typeof res === 'object') {
+        // Try to find any array property
+        for (let k in res) {
+          if (Array.isArray(res[k])) return res[k];
+        }
+      }
+      return [];
+    }
+
+    /* ===== CONVERT BUTTON ===== */
+    convertBtn.onclick = async () => {
+      const type = document.querySelector("input[name=inputType]:checked").value;
+      if (type === "live") return;
+
+      const cost = type === "text" ? 10 : 20;
+      if (!deduct(cost)) return;
+
+      show("Processing…");
+      let data;
+
+      try {
+        if (type === "text") {
+          data = await (await fetch("/api/analyze/text", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ text: textInput.value, framework: "3W1H" })
+          })).json();
+        } else if (type === "audio") {
+          if (!audioFile.files[0]) { alert("Select audio file"); hide(); return; }
+          const fd = new FormData();
+          fd.append("audio", audioFile.files[0]);
+          const uploadRes = await fetch("/api/upload", { method: "POST", body: fd });
+          if (!uploadRes.ok) {
+            const err = await uploadRes.json();
+            hide();
+            alert("Upload failed: " + (err.error || "Unknown error"));
+            return;
+          }
+          const u = await uploadRes.json();
+          data = await (await fetch("/api/analyze", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ filePath: u.filePath, framework: "3W1H", language: "en" })
+          })).json();
+        }
+        render(extractRows(data), data.transcript, {
+          detectedLanguage: data.detectedLanguage,
+          wasTranslated: data.wasTranslated,
+          translatedText: data.translatedText
+        });
+      } catch (e) {
+        console.error("Conversion failed:", e);
+        alert("Conversion failed: " + e.message);
+      }
+      hide();
+    };
+
+    /* ===== LIVE AUDIO ===== */
+    let recorder, chunks = [], stream, timerInt, startTime;
+
+    async function getSupportedMimeType() {
+      const types = ["audio/webm", "audio/mp4", "audio/ogg", "audio/wav"];
+      for (const t of types) {
+        if (MediaRecorder.isTypeSupported(t)) return t;
+      }
+      return "";
+    }
+
+    startRec.onclick = async () => {
+      console.log("🎤 STARTING RECORDING...");
+      if (!isUnlimited && credits < 30) { alert("Insufficient credits. 30 credits required for Live Audio."); return; }
+
+      try {
+        try {
+          stream = await navigator.mediaDevices.getUserMedia({
+            audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true, channelCount: 1 }
+          });
+        } catch (e) {
+          console.warn("⚠️ High-quality mic constraints failed, using defaults.");
+          stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        }
+
+        const mime = await getSupportedMimeType();
+        console.log("🛠️ SUPPORTED MIME:", mime);
+
+        // --- Volume Monitor ---
+        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        const analyser = audioContext.createAnalyser();
+        const source = audioContext.createMediaStreamSource(stream);
+        source.connect(analyser);
+        analyser.fftSize = 256;
+        const dataArray = new Uint8Array(analyser.frequencyBinCount);
+
+        const checkVolume = () => {
+          if (!recorder || recorder.state !== "recording") return;
+          analyser.getByteFrequencyData(dataArray);
+          let sum = 0;
+          for (let i = 0; i < dataArray.length; i++) sum += dataArray[i];
+          const avg = sum / dataArray.length;
+          console.log("🔊 Current Volume Level:", avg.toFixed(2));
+          if (avg < 1) console.warn("🔈 WARNING: Very low volume detected! Check your mic.");
+          setTimeout(checkVolume, 2000);
+        };
+        // ----------------------
+
+        recorder = new MediaRecorder(stream, mime ? { mimeType: mime, audioBitsPerSecond: 128000 } : { audioBitsPerSecond: 128000 });
+        chunks = [];
+        recorder.ondataavailable = e => {
+          if (e.data.size > 0) {
+            chunks.push(e.data);
+            console.log("📦 CHUNK RECORDED:", e.data.size);
+          }
+        };
+        recorder.onstop = processLiveAudio;
+        recorder.start();
+        checkVolume();
+
+        micIcon.classList.add("mic-pulse");
+        startTime = Date.now();
+        timerInt = setInterval(() => timer.textContent =
+          new Date(Date.now() - startTime).toISOString().substr(14, 5), 1000);
+
+        startRec.disabled = true;
+        stopRec.disabled = false;
+      } catch (err) {
+        console.error("❌ MIC ERROR:", err);
+        alert("Microphone error: " + err.message);
+      }
+    };
+
+    stopRec.onclick = () => {
+      recorder.stop();
+      stream.getTracks().forEach(t => t.stop());
+      clearInterval(timerInt);
+      micIcon.classList.remove("mic-pulse");
+      startRec.disabled = false;
+      stopRec.disabled = true;
+    };
+
+    async function processLiveAudio() {
+      console.log("⏹️ RECORDING STOPPED. CHUNKS:", chunks.length);
+      if (!chunks.length) { alert("No audio captured"); return; }
+
+      const blob = new Blob(chunks, { type: chunks[0].type });
+      console.log("🧬 FINAL BLOB:", blob.size, "TYPE:", blob.type);
+
+      if (blob.size < 1000) {
+        alert("Audio recording too short or empty.");
+        return;
+      }
+
+      deduct(30);
+      show("Analyzing live audio…");
+
+      try {
+        const fd = new FormData();
+        fd.append("audio", blob, "live." + (blob.type.split("/")[1]?.split(";")[0] || "webm"));
+
+        console.log("📤 UPLOADING LIVE AUDIO...");
+        const uploadRes = await fetch("/api/upload", { method: "POST", body: fd });
+        if (!uploadRes.ok) {
+          const err = await uploadRes.json();
+          throw new Error(err.error || "Upload failed");
+        }
+        const u = await uploadRes.json();
+        console.log("✅ UPLOAD SUCCESS:", u.filePath);
+
+        console.log("🔍 ANALYZING 3W1H...");
+        const analyzeRes = await fetch("/api/analyze", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ filePath: u.filePath, framework: "3W1H", language: "en" })
+        });
+        if (!analyzeRes.ok) {
+          const err = await analyzeRes.json();
+          throw new Error(err.message || "Analysis failed");
+        }
+        const data = await analyzeRes.json();
+        console.log("📊 ANALYZE RESULT:", data);
+        render(extractRows(data), data.transcript, {
+          detectedLanguage: data.detectedLanguage,
+          wasTranslated: data.wasTranslated,
+          translatedText: data.translatedText
+        });
+      } catch (e) {
+        console.error("❌ LIVE AUDIO ERROR:", e);
+        alert("Live audio failed: " + e.message);
+      }
+      hide();
+    }
+
+    /* ===== RENDER ===== */
+    function render(rows, transcript, languageData) {
+      // Display transcript
+      if (transcript) {
+        transcriptText.textContent = transcript;
+        transcriptDisplay.classList.remove("hidden");
+      } else {
+        transcriptDisplay.classList.add("hidden");
+      }
+
+      // Display language information
+      if (languageData && languageData.detectedLanguage) {
+        const langNames = {
+          'en': 'English',
+          'kn': 'Kannada (ಕನ್ನಡ)',
+          'hi': 'Hindi (हिंदी)',
+          'ta': 'Tamil (தமிழ்)',
+          'te': 'Telugu (తెలుగు)',
+          'ml': 'Malayalam (മലയാളം)',
+          'mr': 'Marathi (मराठी)',
+          'bn': 'Bengali (বাংলা)',
+          'pa': 'Punjabi (ਪੰਜਾਬੀ)',
+          'gu': 'Gujarati (ગુજરાતી)'
+        };
+
+        const langName = langNames[languageData.detectedLanguage] || languageData.detectedLanguage.toUpperCase();
+        detectedLang.textContent = langName;
+
+        if (languageData.wasTranslated) {
+          translationStatus.textContent = '✅ Translated to English for analysis';
+          translationStatus.title = languageData.translatedText || '';
+        } else {
+          translationStatus.textContent = '';
+        }
+
+        languageInfo.classList.remove("hidden");
+      } else {
+        languageInfo.classList.add("hidden");
+      }
+
+      resultBody.innerHTML = "";
+      professionalBody.innerHTML = "";
+      if (!rows.length) {
+        resultBody.innerHTML = professionalBody.innerHTML =
+          `<tr><td colspan="7" class="text-center py-4">No data</td></tr>`;
+        return;
+      }
+
+      rows.forEach((r, i) => {
+        resultBody.innerHTML += `
+      <tr><td>${i + 1}</td><td>${r.what || ""}</td><td>${r.from || ""}</td>
+      <td>${r.to || ""}</td><td>${r.when || ""}</td><td>${r.who || ""}</td><td>${r.how || ""}</td></tr>`;
+
+        professionalBody.innerHTML += `
+      <tr><td>${i + 1}</td>
+      <td>Based on the observation that <strong>${r.what || "an event occurred"}</strong>, it was noted that the transition from <strong>${r.from || "N/A"}</strong> to <strong>${r.to || "N/A"}</strong> was executed. 
+      The event involved <strong>${r.who || "relevant parties"}</strong> and occurred during/at <strong>${r.when || "the specified time"}</strong> via <strong>${r.how || "the described method"}</strong>.</td>
+      <td>${r.from || ""}</td><td>${r.to || ""}</td><td>${r.when || ""}</td><td>${r.who || ""}</td><td>${r.how || ""}</td></tr>`;
+      });
+    }
+
+    /* ===== CLEAR / EXPORT ===== */
+    function clearOutput() {
+      resultBody.innerHTML = ""; professionalBody.innerHTML = "";
+      textInput.value = ""; audioFile.value = "";
+    }
+    function exportExcel(id, name) {
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.table_to_sheet(document.getElementById(id)), "Report");
+      XLSX.writeFile(wb, name);
+    }
+  </script>
+
+  <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+  <script>
+    async function startSubscription(planId) {
+      try {
+        const res = await fetch("/api/subscription/create", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ planId }) // userId comes from auth token
+        });
+
+        if (!res.ok) throw new Error("Failed to create subscription");
+        const sub = await res.json();
+
+        const options = {
+          key: "rzp_test_SGIiAzizfrBnv8",
+          subscription_id: sub.subscriptionId,
+          name: "3W1H Smart Converter",
+          description: "Subscription Plan",
+          handler: function (response) {
+            alert("Subscription Successful! ID: " + response.razorpay_payment_id);
+            loadSubscription();
+          },
+          theme: { color: "#2563eb" }
+        };
+
+        const rzp = new Razorpay(options);
+        rzp.open();
+      } catch (err) {
+        console.error(err);
+        alert("Payment initialization failed.");
+      }
+    }
+
+    async function loadSubscription() {
+      try {
+        const res = await fetch("/api/subscription/status"); // userId from auth token
+        const sub = await res.json();
+
+        if (sub.status === "ACTIVE") {
+          subscriptionCard.classList.remove("hidden");
+          subPlan.textContent = `Current Plan: ${sub.planName}`;
+          subExpiry.textContent = `Expired on ${sub.expiryDate || sub.nextBillingDate}`;
+
+          // Update global credit state
+          if (sub.planName === "Premium") {
+            isUnlimited = true;
+            creditBalance.textContent = "Unlimited";
+            totalPlanCredits = 0;
+          } else {
+            isUnlimited = false;
+            credits = sub.remainingCredits || 0;
+            creditBalance.textContent = credits;
+            // Set total plan credits based on plan name
+            if (sub.planName === "Basic") totalPlanCredits = 500;
+            else if (sub.planName === "Pro") totalPlanCredits = 1200;
+            else totalPlanCredits = sub.totalCredits || 500;
+          }
+        }
+      } catch (e) {
+        console.warn("No active subscription");
+      }
+    }
+
+    loadSubscription();
+
+  </script>
+
+  <!-- API Config -->
+  <script src="/config.js"></script>
+
+  <!-- Firebase Authentication -->
+  <script src="/firebase-config.js"></script>
+  <script>
+    // Global variable to store current user
+    let currentUser = null;
+    let authToken = null;
+
+    // Check authentication on page load
+    auth.onAuthStateChanged(async (user) => {
+      if (!user) {
+        // Not logged in, redirect to login
+        window.location.href = '/login.html';
+        return;
+      }
+
+      currentUser = user;
+
+      // Check email verification (temporarily disabled due to Firebase rate limit)
+      // Uncomment this after Firebase rate limit is lifted (24 hours)
+      /*
+      if (!user.emailVerified) {
+        // Show verification reminder
+        showEmailVerificationReminder();
+        return;
+      }
+      */
+
+      // Get ID token for API calls
+      authToken = await user.getIdToken();
+
+      // Display user email
+      document.getElementById('userEmail').textContent = user.email;
+
+      // Show guidance note on every login
+      showGuidanceModal();
+
+      // Load user's subscription
+      loadSubscription();
+    });
+
+    // Email verification reminder
+    function showEmailVerificationReminder() {
+      const reminderHTML = `
+        <div class="fixed inset-0 bg-black/60 z-50 flex items-center justify-center">
+          <div class="bg-white rounded-lg shadow-xl p-8 max-w-md mx-4">
+            <div class="text-center">
+              <div class="text-6xl mb-4">📧</div>
+              <h2 class="text-2xl font-bold text-gray-800 mb-3">Verify Your Email</h2>
+              <p class="text-gray-600 mb-6">
+                Please verify your email address to access the dashboard. 
+                We've sent a verification link to <strong>${currentUser.email}</strong>
+              </p>
+              <div class="space-y-3">
+                <button onclick="resendVerificationEmail()" 
+                  class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded-lg transition">
+                  Resend Verification Email
+                </button>
+                <button onclick="checkEmailVerified()" 
+                  class="w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-3 rounded-lg transition">
+                  I've Verified - Continue
+                </button>
+                <button onclick="handleLogout()" 
+                  class="w-full bg-gray-500 hover:bg-gray-600 text-white font-semibold py-3 rounded-lg transition">
+                  Logout
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+      document.body.insertAdjacentHTML('beforeend', reminderHTML);
+    }
+
+    // Resend verification email
+    async function resendVerificationEmail() {
+      try {
+        await currentUser.sendEmailVerification();
+        alert('Verification email sent! Please check your inbox.');
+      } catch (error) {
+        console.error('Resend error:', error);
+        alert('Failed to send email: ' + error.message);
+      }
+    }
+
+    // Check if email is now verified
+    async function checkEmailVerified() {
+      try {
+        await currentUser.reload();
+        if (currentUser.emailVerified) {
+          window.location.reload();
+        } else {
+          alert('Email not yet verified. Please check your inbox and click the verification link.');
+        }
+      } catch (error) {
+        console.error('Verification check error:', error);
+        alert('Error checking verification status: ' + error.message);
+      }
+    }
+
+    // Logout function
+    async function handleLogout() {
+      try {
+        await auth.signOut();
+        window.location.href = '/login.html';
+      } catch (error) {
+        console.error('Logout error:', error);
+        alert('Failed to logout: ' + error.message);
+      }
+    }
+
+
+
+    // Override fetch to include authentication token
+    const originalFetch = window.fetch;
+    window.fetch = async function (url, options = {}) {
+      // Handle relative API paths
+      if (url.startsWith('/api/')) {
+        url = (window.API_BASE_URL || '') + url;
+      }
+
+      // Add auth header for API calls (both relative and absolute)
+      if (url.includes('/api/')) {
+        const token = await getIdToken();
+        if (token) {
+          options.headers = {
+            ...options.headers,
+            'Authorization': `Bearer ${token}`
+          };
+        }
+      }
+      return originalFetch(url, options);
+    };
+  </script>
+
+</body>
+
+</html>
