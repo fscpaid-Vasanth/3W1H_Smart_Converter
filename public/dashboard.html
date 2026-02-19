@@ -732,15 +732,28 @@
           handler: async function (response) {
             // Activate the plan on the server
             try {
-              await fetch("/api/subscription/activate", {
+              const activateRes = await fetch("/api/subscription/activate", {
                 method: "POST",
                 headers: { "Content-Type": "application/json", "Authorization": "Bearer " + authToken },
                 body: JSON.stringify({ planId: planId, paymentId: response.razorpay_payment_id })
               });
-            } catch (e) { console.error("Activate error:", e); }
-            alert("Subscription Successful! Your plan has been upgraded.");
+              const activateData = await activateRes.json();
+              console.log("✅ Activation response:", activateData);
+
+              if (!activateRes.ok) {
+                alert("Payment received but plan activation failed. Please contact support.");
+                return;
+              }
+            } catch (e) {
+              console.error("Activate error:", e);
+              alert("Payment received but activation failed. Please refresh the page.");
+              return;
+            }
+
+            alert("🎉 Subscription Successful! Your plan has been upgraded.");
             closeSubscription();
-            loadSubscription(); // Refresh plan & credits display
+            // Small delay to let Firestore write complete
+            setTimeout(() => loadSubscription(), 500);
           },
           theme: { color: "#2563eb" }
         };
@@ -754,39 +767,62 @@
     }
 
     async function loadSubscription() {
+      console.log("📡 Loading subscription... authToken:", authToken ? "present" : "MISSING");
+      if (!authToken) {
+        console.warn("⚠️ Cannot load subscription: no auth token yet");
+        return;
+      }
       try {
         const res = await fetch("/api/subscription/status", {
           headers: { "Authorization": "Bearer " + authToken }
         });
-        const sub = await res.json();
 
-        if (sub.status === "ACTIVE") {
-          subscriptionCard.classList.remove("hidden");
-          subPlan.textContent = `Current Plan: ${sub.planName}`;
-          subExpiry.textContent = `Expired on ${sub.expiryDate || sub.nextBillingDate}`;
-
-          // Update global credit state
-          if (sub.planName === "Premium") {
-            isUnlimited = true;
-            creditBalance.textContent = "Unlimited";
-            totalPlanCredits = 0;
-          } else {
-            isUnlimited = false;
-            credits = sub.remainingCredits || 0;
-            creditBalance.textContent = credits;
-            // Set total plan credits based on plan name
-            if (sub.planName === "Free Trial") totalPlanCredits = 50;
-            else if (sub.planName === "Basic") totalPlanCredits = 500;
-            else if (sub.planName === "Pro") totalPlanCredits = 1200;
-            else totalPlanCredits = sub.totalCredits || 50;
-          }
+        if (!res.ok) {
+          console.error("❌ Subscription API error:", res.status, res.statusText);
+          return;
         }
+
+        const sub = await res.json();
+        console.log("📊 Subscription data:", sub);
+
+        // Always show subscription card with plan info
+        subscriptionCard.classList.remove("hidden");
+        subPlan.textContent = `Current Plan: ${sub.planName || "Free Trial"}`;
+
+        if (sub.expiryDate) {
+          const expDate = new Date(sub.expiryDate);
+          const now = new Date();
+          if (expDate > now) {
+            subExpiry.textContent = `Valid until ${sub.expiryDate}`;
+          } else {
+            subExpiry.textContent = `Expired on ${sub.expiryDate}`;
+          }
+        } else {
+          subExpiry.textContent = "";
+        }
+
+        // Update global credit state
+        if (sub.planName === "Premium" || sub.remainingCredits === "Unlimited") {
+          isUnlimited = true;
+          creditBalance.textContent = "Unlimited";
+          totalPlanCredits = 0;
+        } else {
+          isUnlimited = false;
+          const rc = typeof sub.remainingCredits === "number" ? sub.remainingCredits : parseInt(sub.remainingCredits) || 0;
+          credits = rc;
+          creditBalance.textContent = credits;
+          // Set total plan credits based on plan name
+          if (sub.planName === "Free Trial") totalPlanCredits = 50;
+          else if (sub.planName === "Basic") totalPlanCredits = 500;
+          else if (sub.planName === "Pro") totalPlanCredits = 1200;
+          else totalPlanCredits = (typeof sub.totalCredits === "number" ? sub.totalCredits : parseInt(sub.totalCredits)) || 50;
+        }
+
+        console.log("✅ Plan loaded:", sub.planName, "| Credits:", isUnlimited ? "Unlimited" : credits);
       } catch (e) {
-        console.warn("No active subscription");
+        console.error("❌ Subscription load error:", e);
       }
     }
-
-    loadSubscription();
 
   </script>
 
