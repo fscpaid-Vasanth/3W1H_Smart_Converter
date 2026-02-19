@@ -1,16 +1,18 @@
 import express from "express";
-import { 
-  createSubscription, 
+import {
+  createSubscription,
   getSubscriptionStatus,
+  activateSubscription,
   pauseSubscription,
   resumeSubscription,
-  cancelSubscription 
+  cancelSubscription
 } from "../controllers/subscription.controller.js";
 
 
 const router = express.Router();
 
 router.post("/create", createSubscription);
+router.post("/activate", activateSubscription);
 
 router.get("/status", getSubscriptionStatus);
 

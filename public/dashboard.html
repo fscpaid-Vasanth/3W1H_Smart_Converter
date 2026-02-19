@@ -717,8 +717,8 @@
       try {
         const res = await fetch("/api/subscription/create", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ planId }) // userId comes from auth token
+          headers: { "Content-Type": "application/json", "Authorization": "Bearer " + authToken },
+          body: JSON.stringify({ planId })
         });
 
         if (!res.ok) throw new Error("Failed to create subscription");
@@ -729,9 +729,18 @@
           subscription_id: sub.subscriptionId,
           name: "3W1H Smart Converter",
           description: "Subscription Plan",
-          handler: function (response) {
-            alert("Subscription Successful! ID: " + response.razorpay_payment_id);
-            loadSubscription();
+          handler: async function (response) {
+            // Activate the plan on the server
+            try {
+              await fetch("/api/subscription/activate", {
+                method: "POST",
+                headers: { "Content-Type": "application/json", "Authorization": "Bearer " + authToken },
+                body: JSON.stringify({ planId: planId, paymentId: response.razorpay_payment_id })
+              });
+            } catch (e) { console.error("Activate error:", e); }
+            alert("Subscription Successful! Your plan has been upgraded.");
+            closeSubscription();
+            loadSubscription(); // Refresh plan & credits display
           },
           theme: { color: "#2563eb" }
         };
@@ -746,7 +755,9 @@
 
     async function loadSubscription() {
       try {
-        const res = await fetch("/api/subscription/status"); // userId from auth token
+        const res = await fetch("/api/subscription/status", {
+          headers: { "Authorization": "Bearer " + authToken }
+        });
         const sub = await res.json();
 
         if (sub.status === "ACTIVE") {
@@ -799,15 +810,12 @@
 
       currentUser = user;
 
-      // Check email verification (temporarily disabled due to Firebase rate limit)
-      // Uncomment this after Firebase rate limit is lifted (24 hours)
-      /*
+      // Check email verification
       if (!user.emailVerified) {
         // Show verification reminder
         showEmailVerificationReminder();
         return;
       }
-      */
 
       // Get ID token for API calls
       authToken = await user.getIdToken();

@@ -353,9 +353,9 @@
         const strengthBar = document.getElementById('strengthBar');
         const strengthText = document.getElementById('strengthText');
 
-        // Check if already logged in
+        // Check if already logged in AND email verified
         auth.onAuthStateChanged(user => {
-            if (user) {
+            if (user && user.emailVerified) {
                 window.location.href = '/dashboard';
             }
         });
@@ -437,8 +437,10 @@
                 const user = userCredential.user;
                 await user.updateProfile({ displayName: fullName });
                 await user.sendEmailVerification();
-                showSuccess('Account created successfully! Redirecting to dashboard...');
-                setTimeout(() => { window.location.href = '/dashboard'; }, 2000);
+                // Sign out so user must verify email before accessing dashboard
+                await auth.signOut();
+                showSuccess('Account created! A verification link has been sent to ' + email + '. Please verify your email and then login.');
+                setLoading(false);
             } catch (error) {
                 console.error('Signup error:', error);
                 let message = 'Signup failed. Please try again.';

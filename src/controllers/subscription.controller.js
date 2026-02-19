@@ -5,6 +5,18 @@ const razorpay = new Razorpay({
   key_secret: process.env.RAZORPAY_KEY_SECRET
 });
 
+// ===== IN-MEMORY SUBSCRIPTION STORE =====
+// Maps userId -> subscription data
+// NOTE: This resets on server restart. Replace with database later.
+const userSubscriptions = new Map();
+
+// Plan definitions
+const PLANS = {
+  "plan_SGJ9lQs5QEKndd": { name: "Basic", credits: 500 },
+  "plan_SGJCJCot5JdhOo": { name: "Pro", credits: 1200 },
+  "plan_SGJDEt9DtLott3": { name: "Premium", credits: -1 } // -1 = unlimited
+};
+
 /**
  * POST /api/subscription/create
  */
@@ -23,8 +35,11 @@ export const createSubscription = async (req, res) => {
       }
     });
 
-    // TODO: Save subscription to database with userId
-    // await saveSubscriptionToDatabase(userId, subscription.id, planId);
+    // Store pending subscription so we can activate it after payment
+    userSubscriptions.set(userId + "_pending", {
+      subscriptionId: subscription.id,
+      planId: planId
+    });
 
     return res.json({
       subscriptionId: subscription.id
@@ -35,21 +50,64 @@ export const createSubscription = async (req, res) => {
   }
 };
 
+/**
+ * POST /api/subscription/activate
+ * Called by frontend after successful Razorpay payment
+ */
+export const activateSubscription = async (req, res) => {
+  try {
+    const { planId, paymentId } = req.body;
+    const userId = req.user.uid;
+
+    const plan = PLANS[planId];
+    if (!plan) {
+      return res.status(400).json({ error: "Invalid plan ID" });
+    }
+
+    const now = new Date();
+    const expiryDate = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000); // 30 days
+
+    const subscriptionData = {
+      planName: plan.name,
+      status: "ACTIVE",
+      monthlyCredits: plan.credits === -1 ? "Unlimited" : plan.credits,
+      remainingCredits: plan.credits === -1 ? "Unlimited" : plan.credits,
+      totalCredits: plan.credits === -1 ? "Unlimited" : plan.credits,
+      expiryDate: expiryDate.toISOString().split('T')[0],
+      nextBillingDate: expiryDate.toISOString().split('T')[0],
+      paymentId: paymentId,
+      activatedAt: now.toISOString()
+    };
+
+    // Save to in-memory store
+    userSubscriptions.set(userId, subscriptionData);
+    console.log(`✅ Subscription activated for user ${userId}: ${plan.name}`);
+
+    res.json(subscriptionData);
+  } catch (err) {
+    console.error("SUBSCRIPTION ACTIVATE ERROR:", err);
+    res.status(500).json({ error: "Subscription activation failed" });
+  }
+};
+
 export const getSubscriptionStatus = async (req, res) => {
   try {
-    const userId = req.user.uid; // Get from authenticated user
+    const userId = req.user.uid;
 
-    // TODO: Fetch from database
-    // const subscription = await getSubscriptionFromDatabase(userId);
+    // Check in-memory store first
+    const stored = userSubscriptions.get(userId);
+    if (stored) {
+      return res.json(stored);
+    }
 
-    // 🔹 Default: Free Trial for new users (replace with DB later)
+    // Default: Free Trial for new users
     const subscription = {
       planName: "Free Trial",
       status: "ACTIVE",
       monthlyCredits: 50,
       remainingCredits: 50,
       totalCredits: 50,
-      expiryDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // 30 days from now
+      expiryDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
       nextBillingDate: null
     };
 
@@ -105,11 +163,13 @@ export const cancelSubscription = async (req, res) => {
       cancel_at_cycle_end: true
     });
 
+    // Remove from in-memory store
+    const userId = req.user.uid;
+    userSubscriptions.delete(userId);
+
     res.json({ message: "Subscription will cancel at end of billing cycle" });
   } catch (err) {
     console.error("CANCEL ERROR:", err);
     res.status(500).json({ error: "Failed to cancel subscription" });
   }
 };
-
-
