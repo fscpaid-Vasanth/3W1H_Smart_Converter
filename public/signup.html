@@ -401,7 +401,7 @@
         }
 
         function showSuccess(message) {
-            successText.textContent = message;
+            successText.innerHTML = message;
             successMessage.classList.remove('hidden');
             errorMessage.classList.add('hidden');
         }
@@ -436,10 +436,23 @@
                 const userCredential = await auth.createUserWithEmailAndPassword(email, password);
                 const user = userCredential.user;
                 await user.updateProfile({ displayName: fullName });
-                await user.sendEmailVerification();
+
+                // Send verification with actionCodeSettings for better deliverability
+                const actionCodeSettings = {
+                    url: 'https://threew1h-smart-converter.onrender.com/login.html',
+                    handleCodeInApp: false
+                };
+                await user.sendEmailVerification(actionCodeSettings);
+
                 // Sign out so user must verify email before accessing dashboard
                 await auth.signOut();
-                showSuccess('Account created! A verification link has been sent to ' + email + '. Please verify your email and then login.');
+                showSuccess(
+                    'Account created! A verification link has been sent to <strong>' + email + '</strong>.<br><br>' +
+                    '📧 Check your <strong>inbox</strong> and <strong>spam/junk folder</strong>.<br>' +
+                    'The email comes from <em>noreply@w1h-smart-converter.firebaseapp.com</em><br><br>' +
+                    '<button onclick="resendVerification(\'' + email + '\', \'' + password + '\')" id="resendBtn" ' +
+                    'class="mt-2 px-4 py-1.5 bg-cyan-600 hover:bg-cyan-700 text-white text-xs rounded-lg transition">🔄 Resend Verification Email</button>'
+                );
                 setLoading(false);
             } catch (error) {
                 console.error('Signup error:', error);
@@ -464,6 +477,37 @@
             } else {
                 input.type = 'password';
                 icon.innerHTML = `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />`;
+            }
+        }
+
+        async function resendVerification(email, password) {
+            const btn = document.getElementById('resendBtn');
+            if (!btn) return;
+            btn.disabled = true;
+            btn.textContent = 'Sending...';
+            try {
+                // Sign in temporarily to resend
+                const cred = await auth.signInWithEmailAndPassword(email, password);
+                const actionCodeSettings = {
+                    url: 'https://threew1h-smart-converter.onrender.com/login.html',
+                    handleCodeInApp: false
+                };
+                await cred.user.sendEmailVerification(actionCodeSettings);
+                await auth.signOut();
+                btn.textContent = '✅ Verification email sent! Check inbox & spam.';
+                btn.classList.remove('bg-cyan-600', 'hover:bg-cyan-700');
+                btn.classList.add('bg-green-600');
+                // Cooldown
+                setTimeout(() => {
+                    btn.textContent = '🔄 Resend Verification Email';
+                    btn.classList.remove('bg-green-600');
+                    btn.classList.add('bg-cyan-600', 'hover:bg-cyan-700');
+                    btn.disabled = false;
+                }, 30000); // 30 second cooldown
+            } catch (err) {
+                console.error('Resend error:', err);
+                btn.textContent = '❌ Failed. Try again in 30s.';
+                setTimeout(() => { btn.textContent = '🔄 Resend Verification Email'; btn.disabled = false; }, 30000);
             }
         }
 

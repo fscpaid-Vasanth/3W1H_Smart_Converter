@@ -289,17 +289,17 @@
         const errorText = document.getElementById('errorText');
         const forgotPasswordLink = document.getElementById('forgotPasswordLink');
 
-        // Check if already logged in
+        // Check if already logged in with verified email
         auth.onAuthStateChanged(user => {
-            if (user) {
+            if (user && user.emailVerified) {
                 window.location.href = '/dashboard';
             }
         });
 
         function showError(message) {
-            errorText.textContent = message;
+            errorText.innerHTML = message;
             errorMessage.classList.remove('hidden');
-            setTimeout(() => { errorMessage.classList.add('hidden'); }, 5000);
+            setTimeout(() => { errorMessage.classList.add('hidden'); }, 15000);
         }
 
         function setLoading(loading) {
@@ -328,7 +328,22 @@
                     ? firebase.auth.Auth.Persistence.LOCAL
                     : firebase.auth.Auth.Persistence.SESSION;
                 await auth.setPersistence(persistence);
-                await auth.signInWithEmailAndPassword(email, password);
+                const cred = await auth.signInWithEmailAndPassword(email, password);
+
+                // Check email verification
+                if (!cred.user.emailVerified) {
+                    await auth.signOut();
+                    showError(
+                        '⚠️ Email not verified yet.<br><br>' +
+                        '📧 Check your <strong>inbox</strong> and <strong>spam/junk folder</strong> for the verification link.<br>' +
+                        'Email from: <em>noreply@w1h-smart-converter.firebaseapp.com</em><br><br>' +
+                        '<button onclick="resendFromLogin(\'' + email + '\', \'' + password + '\')" id="resendLoginBtn" ' +
+                        'class="mt-2 px-4 py-1.5 bg-cyan-600 hover:bg-cyan-700 text-white text-xs rounded-lg transition cursor-pointer">🔄 Resend Verification Email</button>'
+                    );
+                    setLoading(false);
+                    return;
+                }
+
                 window.location.href = '/dashboard';
             } catch (error) {
                 console.error('Login error:', error);
@@ -340,11 +355,36 @@
                     case 'auth/user-disabled': message = 'This account has been disabled.'; break;
                     case 'auth/too-many-requests': message = 'Too many failed attempts. Please try again later.'; break;
                     case 'auth/network-request-failed': message = 'Network error. Please check your connection.'; break;
+                    case 'auth/invalid-credential': message = 'Invalid email or password. Please check and try again.'; break;
                 }
                 showError(message);
                 setLoading(false);
             }
         });
+
+        async function resendFromLogin(email, password) {
+            const btn = document.getElementById('resendLoginBtn');
+            if (!btn) return;
+            btn.disabled = true;
+            btn.textContent = 'Sending...';
+            try {
+                const cred = await auth.signInWithEmailAndPassword(email, password);
+                const actionCodeSettings = {
+                    url: 'https://threew1h-smart-converter.onrender.com/login.html',
+                    handleCodeInApp: false
+                };
+                await cred.user.sendEmailVerification(actionCodeSettings);
+                await auth.signOut();
+                btn.textContent = '✅ Sent! Check inbox & spam.';
+                btn.classList.remove('bg-cyan-600');
+                btn.classList.add('bg-green-600');
+                setTimeout(() => { btn.textContent = '🔄 Resend Verification Email'; btn.classList.remove('bg-green-600'); btn.classList.add('bg-cyan-600'); btn.disabled = false; }, 30000);
+            } catch (err) {
+                console.error('Resend error:', err);
+                btn.textContent = '❌ Failed. Try again later.';
+                setTimeout(() => { btn.textContent = '🔄 Resend Verification Email'; btn.disabled = false; }, 30000);
+            }
+        }
 
         forgotPasswordLink.addEventListener('click', async (e) => {
             e.preventDefault();
