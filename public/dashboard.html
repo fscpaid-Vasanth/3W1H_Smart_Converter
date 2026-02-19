@@ -117,7 +117,23 @@
         <button onclick="closeSubscription()" class="text-xl">✖</button>
       </div>
 
-      <div class="grid grid-cols-3 gap-4">
+      <div class="grid grid-cols-4 gap-4">
+
+        <!-- FREE TRIAL (Default) -->
+        <div class="border-2 border-blue-400 rounded p-4 text-center bg-blue-50">
+          <div class="text-xs font-bold text-blue-600 mb-1">🎁 DEFAULT</div>
+          <h3 class="font-semibold text-lg mb-1 text-blue-700">Free Trial</h3>
+          <p class="text-2xl font-bold mb-1">₹0</p>
+          <p class="text-xs text-gray-500 mb-3">50 Credits / 1 Month</p>
+          <ul class="text-xs text-gray-600 mb-4 space-y-1">
+            <li>✔ Write Input (10 Credits)</li>
+            <li>✔ Audio Upload (20 Credits)</li>
+            <li>✔ Live Audio (30 Credits)</li>
+          </ul>
+          <div class="w-full bg-blue-100 text-blue-700 py-1 rounded text-sm font-semibold">
+            Active by Default
+          </div>
+        </div>
 
         <!-- BASIC -->
         <div class="border rounded p-4 text-center">
@@ -125,9 +141,9 @@
           <p class="text-2xl font-bold mb-1">₹499</p>
           <p class="text-xs text-gray-500 mb-3">500 Credits / Month</p>
           <ul class="text-xs text-gray-600 mb-4 space-y-1">
-            <li>✔ Write Input (10 Credits/Conversion)</li>
-            <li>✔ Audio Upload (20 Credits/Conversion)</li>
-            <li>✔ Limited Live Audio (30 Credits/Conversion)</li>
+            <li>✔ Write Input (10 Credits)</li>
+            <li>✔ Audio Upload (20 Credits)</li>
+            <li>✔ Live Audio (30 Credits)</li>
           </ul>
           <button onclick="startSubscription('plan_SGJ9lQs5QEKndd')"
             class="w-full bg-blue-600 text-white py-1 rounded text-sm">
@@ -155,7 +171,7 @@
         <div class="border rounded p-4 text-center">
           <h3 class="font-semibold text-lg mb-1">Premium</h3>
           <p class="text-2xl font-bold mb-1">₹1999</p>
-          <p class="text-xs text-gray-500 mb-3">Unlimited Credits / Month</p>
+          <p class="text-xs text-gray-500 mb-3">Unlimited Credits</p>
           <ul class="text-xs text-gray-600 mb-4 space-y-1">
             <li>✔ Unlimited Usage</li>
             <li>✔ Dedicated Support</li>
@@ -748,9 +764,10 @@
             credits = sub.remainingCredits || 0;
             creditBalance.textContent = credits;
             // Set total plan credits based on plan name
-            if (sub.planName === "Basic") totalPlanCredits = 500;
+            if (sub.planName === "Free Trial") totalPlanCredits = 50;
+            else if (sub.planName === "Basic") totalPlanCredits = 500;
             else if (sub.planName === "Pro") totalPlanCredits = 1200;
-            else totalPlanCredits = sub.totalCredits || 500;
+            else totalPlanCredits = sub.totalCredits || 50;
           }
         }
       } catch (e) {

@@ -42,14 +42,15 @@ export const getSubscriptionStatus = async (req, res) => {
     // TODO: Fetch from database
     // const subscription = await getSubscriptionFromDatabase(userId);
 
-    // 🔹 Example data (replace with DB later)
+    // 🔹 Default: Free Trial for new users (replace with DB later)
     const subscription = {
-      planName: "Pro",
+      planName: "Free Trial",
       status: "ACTIVE",
-      monthlyCredits: 1200,
-      remainingCredits: 1200,
-      expiryDate: "2026-03-15",
-      nextBillingDate: "2026-03-15"
+      monthlyCredits: 50,
+      remainingCredits: 50,
+      totalCredits: 50,
+      expiryDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // 30 days from now
+      nextBillingDate: null
     };
 
     res.json(subscription);
