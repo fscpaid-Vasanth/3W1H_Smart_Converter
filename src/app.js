@@ -31,8 +31,26 @@ app.use(express.json());
 /* PUBLIC ROUTES (no auth required) */
 app.use("/api/webhook", webhookRoutes);
 
-/* STATIC FILES - Public pages (login, signup) */
-app.use(express.static(path.join(__dirname, "../public")));
+/* STATIC FILES with browser caching */
+app.use(express.static(path.join(__dirname, "../public"), {
+  maxAge: '1d',           // Default: cache 1 day for CSS/JS
+  etag: true,             // Enable ETag for cache validation
+  lastModified: true,     // Enable Last-Modified header
+  setHeaders: (res, filePath) => {
+    // Images & fonts: cache 7 days
+    if (/\.(png|jpg|jpeg|gif|svg|ico|woff|woff2|ttf|eot)$/i.test(filePath)) {
+      res.setHeader('Cache-Control', 'public, max-age=604800'); // 7 days
+    }
+    // HTML: always revalidate (so updates are instant)
+    else if (/\.html$/i.test(filePath)) {
+      res.setHeader('Cache-Control', 'no-cache, must-revalidate');
+    }
+    // CSS/JS: cache 1 day
+    else if (/\.(css|js)$/i.test(filePath)) {
+      res.setHeader('Cache-Control', 'public, max-age=86400'); // 1 day
+    }
+  }
+}));
 
 /* PROTECTED API ROUTES (auth required) */
 app.use("/api/upload", authenticateUser, uploadRoutes);

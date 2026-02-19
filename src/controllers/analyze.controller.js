@@ -12,8 +12,10 @@ console.log("🔥 ANALYZE CONTROLLER LOADED");
  */
 export const analyzeAudio = async (req, res) => {
   console.log("📥 RECEIVED ANALYZE REQUEST:", req.body);
+  let fileToCleanup = null; // Track file for cleanup
   try {
     const { filePath, framework } = req.body;
+    fileToCleanup = filePath; // Store for cleanup in finally block
 
     if (!filePath || !framework) {
       return res.status(400).json({
@@ -113,6 +115,16 @@ export const analyzeAudio = async (req, res) => {
       rows: [],
       message: "Unexpected server error during audio analysis"
     });
+  } finally {
+    // 🧹 CLEANUP: Delete audio file after processing (success or error)
+    if (fileToCleanup && fs.existsSync(fileToCleanup)) {
+      try {
+        fs.unlinkSync(fileToCleanup);
+        console.log("🗑️ Cleaned up audio file:", fileToCleanup);
+      } catch (cleanupErr) {
+        console.error("⚠️ Failed to cleanup file:", fileToCleanup, cleanupErr.message);
+      }
+    }
   }
 };
 
