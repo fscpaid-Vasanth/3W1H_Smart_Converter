@@ -13,9 +13,69 @@ const PLANS = {
   "plan_SGJDEt9DtLott3": { name: "Premium", credits: -1 } // -1 = unlimited
 };
 
-// Helper: get Firestore instance
+// ===== DUAL STORAGE: Firestore (persistent) + In-memory (fallback) =====
+const userSubscriptions = new Map(); // Fallback if Firestore unavailable
+
 function getDb() {
-  return admin.firestore();
+  try {
+    // Check if Firebase Admin is initialized
+    if (admin.apps.length > 0) {
+      return admin.firestore();
+    }
+  } catch (e) {
+    console.warn("⚠️ Firestore not available, using in-memory store");
+  }
+  return null;
+}
+
+// Read subscription: try Firestore first, then in-memory
+async function readSubscription(userId) {
+  const db = getDb();
+  if (db) {
+    try {
+      const doc = await db.collection("subscriptions").doc(userId).get();
+      if (doc.exists) return doc.data();
+    } catch (e) {
+      console.error("⚠️ Firestore read failed:", e.message);
+    }
+  }
+  // Fallback to in-memory
+  return userSubscriptions.get(userId) || null;
+}
+
+// Write subscription: try Firestore first, always write to in-memory
+async function writeSubscription(userId, data) {
+  // Always save to in-memory (instant, reliable)
+  userSubscriptions.set(userId, data);
+
+  // Try to save to Firestore (persistent)
+  const db = getDb();
+  if (db) {
+    try {
+      await db.collection("subscriptions").doc(userId).set(data);
+      console.log(`✅ Saved to Firestore for user ${userId}`);
+    } catch (e) {
+      console.error("⚠️ Firestore write failed, using in-memory only:", e.message);
+    }
+  }
+}
+
+// Update subscription fields
+async function updateSubscription(userId, updates) {
+  // Update in-memory
+  const existing = userSubscriptions.get(userId) || {};
+  const merged = { ...existing, ...updates };
+  userSubscriptions.set(userId, merged);
+
+  // Try Firestore
+  const db = getDb();
+  if (db) {
+    try {
+      await db.collection("subscriptions").doc(userId).update(updates);
+    } catch (e) {
+      console.error("⚠️ Firestore update failed:", e.message);
+    }
+  }
 }
 
 /**
@@ -76,10 +136,9 @@ export const activateSubscription = async (req, res) => {
       updatedAt: now.toISOString()
     };
 
-    // Save to Firestore (persistent!)
-    const db = getDb();
-    await db.collection("subscriptions").doc(userId).set(subscriptionData);
-    console.log(`✅ Subscription saved to Firestore for user ${userId}: ${plan.name}`);
+    // Save to storage (Firestore + in-memory)
+    await writeSubscription(userId, subscriptionData);
+    console.log(`✅ Subscription activated for user ${userId}: ${plan.name}`);
 
     res.json(subscriptionData);
   } catch (err) {
@@ -94,16 +153,16 @@ export const activateSubscription = async (req, res) => {
 export const getSubscriptionStatus = async (req, res) => {
   try {
     const userId = req.user.uid;
+    console.log(`📡 Getting subscription for user: ${userId}`);
 
-    // Check Firestore first
-    const db = getDb();
-    const doc = await db.collection("subscriptions").doc(userId).get();
+    // Read from storage
+    const stored = await readSubscription(userId);
 
-    if (doc.exists) {
-      const data = doc.data();
+    if (stored) {
+      console.log(`📊 Found subscription:`, stored.planName);
+
       // Check if subscription has expired
-      if (data.expiryDate && new Date(data.expiryDate) < new Date() && data.planName !== "Free Trial") {
-        // Expired — downgrade to Free Trial
+      if (stored.expiryDate && new Date(stored.expiryDate) < new Date() && stored.planName !== "Free Trial") {
         const freeTrial = {
           planName: "Free Trial",
           status: "EXPIRED",
@@ -114,13 +173,15 @@ export const getSubscriptionStatus = async (req, res) => {
           nextBillingDate: null,
           updatedAt: new Date().toISOString()
         };
-        await db.collection("subscriptions").doc(userId).set(freeTrial);
+        await writeSubscription(userId, freeTrial);
         return res.json(freeTrial);
       }
-      return res.json(data);
+
+      return res.json(stored);
     }
 
     // Default: Free Trial for new users
+    console.log(`🆕 New user ${userId}, assigning Free Trial`);
     const subscription = {
       planName: "Free Trial",
       status: "ACTIVE",
@@ -128,15 +189,11 @@ export const getSubscriptionStatus = async (req, res) => {
       remainingCredits: 50,
       totalCredits: 50,
       expiryDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-      nextBillingDate: null
+      nextBillingDate: null,
+      createdAt: new Date().toISOString()
     };
 
-    // Save default Free Trial to Firestore
-    await db.collection("subscriptions").doc(userId).set({
-      ...subscription,
-      createdAt: new Date().toISOString()
-    });
-
+    await writeSubscription(userId, subscription);
     res.json(subscription);
   } catch (err) {
     console.error("SUBSCRIPTION STATUS ERROR:", err);
@@ -155,9 +212,7 @@ export const pauseSubscription = async (req, res) => {
       pause_at: "now"
     });
 
-    // Update Firestore
-    const db = getDb();
-    await db.collection("subscriptions").doc(req.user.uid).update({
+    await updateSubscription(req.user.uid, {
       status: "PAUSED",
       updatedAt: new Date().toISOString()
     });
@@ -178,9 +233,7 @@ export const resumeSubscription = async (req, res) => {
 
     await razorpay.subscriptions.resume(subscriptionId);
 
-    // Update Firestore
-    const db = getDb();
-    await db.collection("subscriptions").doc(req.user.uid).update({
+    await updateSubscription(req.user.uid, {
       status: "ACTIVE",
       updatedAt: new Date().toISOString()
     });
@@ -203,9 +256,7 @@ export const cancelSubscription = async (req, res) => {
       cancel_at_cycle_end: true
     });
 
-    // Downgrade to Free Trial in Firestore
-    const db = getDb();
-    await db.collection("subscriptions").doc(req.user.uid).update({
+    await updateSubscription(req.user.uid, {
       planName: "Free Trial",
       status: "CANCELLED",
       monthlyCredits: 50,

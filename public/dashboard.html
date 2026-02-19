@@ -785,32 +785,43 @@
         const sub = await res.json();
         console.log("📊 Subscription data:", sub);
 
-        // Always show subscription card with plan info
-        subscriptionCard.classList.remove("hidden");
-        subPlan.textContent = `Current Plan: ${sub.planName || "Free Trial"}`;
+        // Get DOM elements explicitly
+        const cardEl = document.getElementById("subscriptionCard");
+        const planEl = document.getElementById("subPlan");
+        const expiryEl = document.getElementById("subExpiry");
+        const creditEl = document.getElementById("creditBalance");
 
-        if (sub.expiryDate) {
+        if (!cardEl || !planEl) {
+          console.error("❌ Subscription DOM elements not found!");
+          return;
+        }
+
+        // Always show subscription card with plan info
+        cardEl.classList.remove("hidden");
+        planEl.textContent = "Current Plan: " + (sub.planName || "Free Trial");
+
+        if (sub.expiryDate && expiryEl) {
           const expDate = new Date(sub.expiryDate);
           const now = new Date();
           if (expDate > now) {
-            subExpiry.textContent = `Valid until ${sub.expiryDate}`;
+            expiryEl.textContent = "Valid until " + sub.expiryDate;
           } else {
-            subExpiry.textContent = `Expired on ${sub.expiryDate}`;
+            expiryEl.textContent = "Expired on " + sub.expiryDate;
           }
-        } else {
-          subExpiry.textContent = "";
+        } else if (expiryEl) {
+          expiryEl.textContent = "";
         }
 
         // Update global credit state
         if (sub.planName === "Premium" || sub.remainingCredits === "Unlimited") {
           isUnlimited = true;
-          creditBalance.textContent = "Unlimited";
+          if (creditEl) creditEl.textContent = "Unlimited";
           totalPlanCredits = 0;
         } else {
           isUnlimited = false;
           const rc = typeof sub.remainingCredits === "number" ? sub.remainingCredits : parseInt(sub.remainingCredits) || 0;
           credits = rc;
-          creditBalance.textContent = credits;
+          if (creditEl) creditEl.textContent = credits;
           // Set total plan credits based on plan name
           if (sub.planName === "Free Trial") totalPlanCredits = 50;
           else if (sub.planName === "Basic") totalPlanCredits = 500;
