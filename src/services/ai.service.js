@@ -96,14 +96,14 @@ export async function generateStructuredTable(text, framework) {
   let textToAnalyze = text;
   let wasTranslated = false;
 
-  // Step 2: Translate if not English
+  // Step 2: Translation
   if (detectedLang !== "en") {
     console.log(`⚠️ Non-English text detected (${detectedLang}). Translating...`);
     textToAnalyze = await translateToEnglish(text, detectedLang);
     wasTranslated = true;
   }
 
-  // Step 3: Extract 3W1H from English text
+  // Step 3: Extract 3W1H
   const response = await client.chat.completions.create({
     model: "gpt-4o-mini",
     messages: [
@@ -124,9 +124,9 @@ Each object MUST have ALL of these fields:
 --- Professional Investigation Analysis ( 3W1H ) fields ---
 The fields below must be DIFFERENT from the raw standard fields (what, how) above. Use professional corporate language.
 
-- problem: A concise professional problem statement (25-35 words). Rephrase the raw "what" professionally. Example: "It has been critically observed that [issue], posing adverse implications on business performance and requiring immediate corrective action."
+- problem: A concise professional problem statement (25-35 words). Rephrase the raw "what" professionally. Example: "It has been critically observed that [issue], posing adverse implications on performance and requiring immediate corrective action."
 
-- actionPlan: A concise professional action plan (25-35 words, 2 numbered steps). Rephrase the raw "how" professionally. Example: "1. Immediately implement [action] with clear accountability. 2. Track progress via weekly KPIs to ensure timely achievement of targeted outcomes."
+- actionPlan: A concise professional action plan (25-35 words, 2 numbered steps). Rephrase the raw "how" professionally. Example: "1. Immediately implement [action] with clear accountability. 2. Track progress via weekly KPIs to ensure performance."
 
 - fromNumeric: The starting metric with a brief professional qualifier (1 sentence, e.g., "Current baseline: 2 executives, assessed as below optimal operational requirement").
 
@@ -147,22 +147,17 @@ ${wasTranslated ? "Note: This text was translated from another language. Extract
   });
 
   const raw = response.choices[0].message.content;
-  console.log("🤖 RAW AI RESPONSE:", raw);
   const cleaned = cleanJson(raw);
-  console.log("🧼 CLEANED AI JSON:", cleaned);
 
   let parsed;
   try {
     parsed = JSON.parse(cleaned);
   } catch (parseErr) {
-    console.error("❌ JSON PARSE ERROR:", parseErr.message);
-    console.error("❌ RAW CLEANED TEXT:", cleaned.substring(0, 500));
     throw new Error("AI returned invalid JSON: " + parseErr.message);
   }
 
   // ✅ FORCE ARRAY
   if (!Array.isArray(parsed)) {
-    // If it's an object with a rows/data array, extract it
     if (parsed && typeof parsed === 'object') {
       for (const key of Object.keys(parsed)) {
         if (Array.isArray(parsed[key])) {
@@ -173,37 +168,6 @@ ${wasTranslated ? "Note: This text was translated from another language. Extract
     }
     if (!Array.isArray(parsed)) {
       throw new Error("AI did not return array");
-    }
-  }
-
-  // Return with metadata
-  // POST-PROCESS: Ensure professional fields are different from raw fields
-  console.log("🔄 POST-PROCESSING: Checking", parsed.length, "rows for professional field expansion");
-  for (const row of parsed) {
-    console.log("📋 ROW CHECK — problem:", (row.problem || "MISSING").substring(0, 50), "| what:", (row.what || "MISSING").substring(0, 50));
-    console.log("📋 ROW CHECK — problem length:", row.problem ? row.problem.length : 0, "| same as what:", row.problem === row.what);
-    // If problem is missing or same as what, expand it professionally
-    if (!row.problem || row.problem === row.what || row.problem.length < 80) {
-      console.log("✅ EXPANDING problem field (was too short or same as what)");
-      const rawWhat = row.what || "the identified issue";
-      row.problem = `It has been critically observed and documented through a comprehensive operational review that ${rawWhat.toLowerCase()}. This issue has been assessed as having significant adverse implications on the overall business performance, operational efficiency, and strategic growth objectives of the organization. The severity of this matter warrants immediate attention from the management team, as continued inaction may result in further deterioration of key performance indicators, declining customer satisfaction levels, reduced revenue generation capacity, and potential loss of competitive advantage in the market. A thorough root cause analysis indicates that systemic operational gaps and resource constraints have contributed to the emergence of this critical concern, thereby necessitating urgent strategic intervention and the implementation of corrective measures to restore operational stability and drive sustainable improvement.`;
-    }
-    // If actionPlan is missing or same as how, expand it professionally  
-    if (!row.actionPlan || row.actionPlan === row.how || row.actionPlan.length < 80) {
-      const rawHow = row.how || "implement corrective measures";
-      row.actionPlan = `1. It is strongly recommended to immediately initiate the strategic implementation of the following corrective measures: ${rawHow}. The responsible department heads and team leaders shall be accountable for ensuring timely execution within the designated timeline. 2. The management team is advised to establish a comprehensive performance monitoring and tracking system with clearly defined Key Performance Indicators (KPIs) to measure the effectiveness of the implemented actions on a weekly and monthly basis. 3. As a strategic corrective measure, it is proposed to conduct regular progress review meetings with all relevant stakeholders to assess the status of implementation, identify potential bottlenecks, and make necessary adjustments to ensure the achievement of the targeted outcomes and organizational objectives within the stipulated timeframe.`;
-    }
-    // If fromNumeric is missing, generate from raw
-    if (!row.fromNumeric || row.fromNumeric === row.from) {
-      row.fromNumeric = `The current operational baseline stands at: ${row.from || 'the existing level'}, which has been assessed as requiring significant improvement to meet the organizational performance standards and strategic targets`;
-    }
-    // If toNumeric is missing, generate from raw
-    if (!row.toNumeric || row.toNumeric === row.to) {
-      row.toNumeric = `The strategic target has been established at: ${row.to || 'the desired level'}, which is projected to deliver measurable improvements in operational efficiency, service delivery, and overall business performance`;
-    }
-    // If summary is missing or too short, build from other fields
-    if (!row.summary || row.summary.length < 200) {
-      row.summary = `${row.problem} Furthermore, the proposed action plan encompasses the following strategic measures: ${row.actionPlan} The transition from the current baseline of ${row.fromNumeric} to the targeted outcome of ${row.toNumeric} represents a critical organizational priority. The successful implementation of these measures is expected to yield significant improvements in operational performance, enhance customer satisfaction levels, strengthen competitive positioning, and contribute to the long-term sustainable growth of the organization. All stakeholders are advised to collaborate closely and ensure accountability throughout the implementation process.`;
     }
   }
 

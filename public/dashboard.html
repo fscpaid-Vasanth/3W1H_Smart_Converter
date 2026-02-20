@@ -715,24 +715,16 @@
         const fromVal = (r.fromNumeric || r.from || "N/A");
         const toVal = (r.toNumeric || r.to || "N/A");
 
-        // Expand problem if missing / same as what / too short (<30 chars means AI gave nothing useful)
+        // Expand problem ONLY if missing / same as what / too short
         const rawWhat = (r.what || "").trim();
         if (!prob || prob === rawWhat || prob.length < 30) {
-          // AI gave nothing — build from raw what
-          prob = "It has been critically observed that " + (rawWhat || "the identified issue") + ", posing adverse implications on business performance and requiring immediate corrective action.";
-        } else {
-          // AI gave something — wrap it professionally so it looks different from First Investigation Report
-          prob = "It has been critically observed that " + prob + ", posing adverse implications on business performance and requiring immediate corrective action.";
+          prob = "It has been critically observed that " + (rawWhat || "the identified issue") + ", posing adverse implications on performance and requiring immediate corrective action.";
         }
 
-        // Expand actionPlan if missing / same as how / too short
+        // Expand actionPlan ONLY if missing / same as how / too short
         const rawHow = (r.how || "").trim();
         if (!plan || plan === rawHow || plan.length < 30) {
-          // AI gave nothing — build from raw how
-          plan = "1. Implement immediately: " + (rawHow || "corrective measures") + ", with clear accountability. 2. Track progress via weekly KPIs and bi-weekly reviews to ensure timely outcomes.";
-        } else {
-          // AI gave something — wrap with structured professional format
-          plan = "1. Implement immediately: " + plan + ". 2. Track progress via weekly KPIs and bi-weekly reviews to ensure timely outcomes.";
+          plan = "1. Implement immediately: " + (rawHow || "corrective measures") + ". 2. Track progress via monthly KPIs to ensure sustainable outcomes.";
         }
 
         // Format numbered steps with line breaks
