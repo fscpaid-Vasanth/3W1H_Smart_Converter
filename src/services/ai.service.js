@@ -113,26 +113,26 @@ export async function generateStructuredTable(text, framework) {
 Return ONLY a valid JSON array of objects. No intro or explanation.
 Each object MUST have ALL of these fields:
 
---- Standard 3W1H fields (for First Investigation Report) ---
-- what: What happened or what is the issue? (full description)
-- from: Origin, starting point, or initial state.
-- to: Result, destination, or target state.
-- when: Timing, duration, or specific date/time.
-- who: People, teams, or parties involved.
-- how: Method, cause, or how it was resolved.
+--- Standard 3W1H fields (for First Investigation Report — keep these SHORT and CONCISE) ---
+- what: What happened or what is the issue? SHORT answer, max 1-2 sentences, raw extracted fact only.
+- from: Origin, starting point, or initial state. SHORT — 1 sentence or a number/metric only.
+- to: Result, destination, or target state. SHORT — 1 sentence or a number/metric only.
+- when: Timing, duration, or specific date/time. SHORT — date, period, or timeframe only.
+- who: People, teams, or parties involved. SHORT — names, roles, or departments only.
+- how: Method, cause, or action taken. SHORT answer, max 1-2 sentences, raw extracted fact only.
 
 --- Professional Investigation Analysis ( 3W1H ) fields ---
-CRITICAL: The fields below (problem, actionPlan) must be COMPLETELY DIFFERENT and MUCH LONGER than the standard fields (what, how) above. The standard fields contain raw short data. The professional fields must contain expanded, elaborate, corporate-grade professional statements. NEVER copy the same text. Always expand and elaborate with professional supportive language.
+The fields below must be DIFFERENT from the raw standard fields (what, how) above. Use professional corporate language.
 
-- problem: MUST be MINIMUM 100 WORDS and MUST be completely different from the "what" field above. Take the raw "what" data and transform it into a lengthy, formal, professional problem statement. Start with phrases like "It has been critically observed and documented that..." or "Upon thorough examination and detailed assessment, it has come to the attention of the management that..." or "A comprehensive review of operational performance has revealed a significant and concerning issue wherein...". Include: impact on business operations, severity of the issue, affected stakeholders, financial implications, operational disruptions, and consequences if the problem remains unaddressed. Use elaborate formal corporate language throughout. This must read like a professional management consulting report paragraph.
+- problem: A concise professional problem statement (25-35 words). Rephrase the raw "what" professionally. Example: "It has been critically observed that [issue], posing adverse implications on business performance and requiring immediate corrective action."
 
-- actionPlan: MUST be MINIMUM 100 WORDS and MUST be completely different from the "how" field above. Take the raw "how" data and transform it into a lengthy, formal, professional action plan. Format as numbered steps (1. 2. 3. etc.). Start each action with professional phrases like "It is strongly recommended to immediately initiate..." or "The management team is advised to implement a comprehensive..." or "As a strategic corrective measure, it is proposed to...". Each action must include specific quantities, metrics, timelines, responsible parties, expected outcomes, and KPIs for monitoring progress. Use elaborate formal corporate language throughout.
+- actionPlan: A concise professional action plan (25-35 words, 2 numbered steps). Rephrase the raw "how" professionally. Example: "1. Immediately implement [action] with clear accountability. 2. Track progress via weekly KPIs to ensure timely achievement of targeted outcomes."
 
-- fromNumeric: The numerical starting value or current baseline metric with a professional supportive statement describing the current state (e.g., "The current operational baseline stands at an insufficient level of 7 customer care executives, which has been assessed as significantly below the optimal staffing requirement").
+- fromNumeric: The starting metric with a brief professional qualifier (1 sentence, e.g., "Current baseline: 2 executives, assessed as below optimal operational requirement").
 
-- toNumeric: The numerical target value or goal metric with a professional supportive statement describing the desired outcome (e.g., "The strategic target has been established at 8 customer care executives, which is projected to achieve a 15% improvement in service delivery capacity and operational efficiency").
+- toNumeric: The target metric with a brief professional qualifier (1 sentence, e.g., "Strategic target: 5 executives, projected to achieve full operational efficiency").
 
-- summary: Write a comprehensive executive summary paragraph (MINIMUM 400 WORDS). The summary MUST consolidate: (1) WHAT - the complete problem with context and business impact, (2) HOW - the full quantified action plan with numbers, metrics and timelines, (3) FROM - current baseline metrics and starting values, (4) TO - target metrics and desired outcomes. Include root cause analysis, stakeholder involvement, expected business impact, timeline, risk assessment, and monitoring framework. Use formal professional corporate language with quantified statements throughout.
+- summary: Write a concise executive summary (150-200 words) covering: (1) WHAT — the problem with business impact, (2) HOW — the action plan with key steps, (3) FROM — current baseline, (4) TO — target outcome. Use professional formal language.
 
 ${wasTranslated ? "Note: This text was translated from another language. Extract the information accurately." : ""}`
       },
