@@ -716,9 +716,11 @@
         const toVal = (r.toNumeric || r.to || "N/A");
 
         // Expand problem ONLY if missing / same as what / too short
-        const rawWhat = (r.what || "").trim().replace(/\.*$/, ""); // Remove trailing periods
+        const rawWhat = (r.what || "").trim().replace(/\.*$/, "");
         if (!prob || prob === rawWhat || prob.length < 30) {
-          prob = "It has been critically observed that " + (rawWhat || "the identified issue") + ", adversely affecting organization performance and necessitating urgent corrective intervention.";
+          // Lowercase the first char to blend with "that"
+          const cleanWhat = rawWhat ? (rawWhat.charAt(0).toLowerCase() + rawWhat.slice(1)) : "the identified issue";
+          prob = "It has been critically observed that " + cleanWhat + ", adversely affecting organization performance and necessitating urgent corrective intervention.";
         }
 
         // Expand actionPlan ONLY if missing / same as how / too short

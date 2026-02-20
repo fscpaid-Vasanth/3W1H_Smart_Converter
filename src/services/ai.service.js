@@ -117,22 +117,21 @@ Each object MUST have ALL of these fields:
 - what: What happened or what is the issue? SHORT answer, max 1-2 sentences, raw extracted fact only.
 - from: Origin, starting point, or initial state. SHORT — 1 sentence or a number/metric only.
 - to: Result, destination, or target state. SHORT — 1 sentence or a number/metric only.
-- when: Timing, duration, or specific date/time. SHORT — date, period, or timeframe only.
-- who: People, teams, or parties involved. SHORT — names, roles, or departments only.
+- when: ACTION PLAN TIMELINE. When will the action be completed? (e.g., "By end of Q1 2026", "Within 2 weeks"). DO NOT use the time the issue occurred.
+- who: People, teams, or parties involved in the ACTION. SHORT — names, roles, or departments only.
 - how: Method, cause, or action taken. SHORT answer, max 1-2 sentences, raw extracted fact only.
 
 --- Professional Investigation Analysis ( 3W1H ) fields ---
-The fields below must be DIFFERENT from the raw standard fields (what, how) above. Use professional corporate language.
+- problem: A concise professional problem statement (exactly 25-30 words). Rephrase the raw "what" professionally. MUST be between 25 and 30 words.
+- actionPlan: A concise professional action plan (exactly 25-30 words, 2 numbered steps). MUST be between 25 and 30 words.
+- fromNumeric: The starting metric with a brief professional qualifier (1 sentence).
+- toNumeric: The target metric with a brief professional qualifier (1 sentence).
+- summary: A concise executive summary (150-200 words) covering What, How, From, and To.
 
-- problem: A concise professional problem statement (exactly 25-30 words). Rephrase the raw "what" professionally. MUST be between 25 and 30 words. Example structure: "It has been critically observed that [issue], posing adverse implications on performance and requiring immediate corrective action."
-
-- actionPlan: A concise professional action plan (exactly 25-30 words, 2 numbered steps). Rephrase the raw "how" professionally. MUST be between 25 and 30 words. Example structure: "1. Immediately implement [action] with clear accountability. 2. Track progress via weekly KPIs to ensure performance."
-
-- fromNumeric: The starting metric with a brief professional qualifier (1 sentence, e.g., "Current baseline: 2 executives, assessed as below optimal operational requirement").
-
-- toNumeric: The target metric with a brief professional qualifier (1 sentence, e.g., "Strategic target: 5 executives, projected to achieve full operational efficiency").
-
-- summary: Write a concise executive summary (150-200 words) covering: (1) WHAT — the problem with business impact, (2) HOW — the action plan with key steps, (3) FROM — current baseline, (4) TO — target outcome. Use professional formal language.
+CRITICAL INSTRUCTIONS:
+1. CONSOLIDATION: Group all related observations into a single analysis row. DO NOT create multiple rows for the same overarching issue (e.g., if multiple sentences refer to "manpower shortage", create only ONE row).
+2. TIMELINE: The "when" field MUST indicate the DEADLINE or DURATION of the Action Plan.
+3. LANGUAGE: Use formal, senior-consultant-grade English.
 
 ${wasTranslated ? "Note: This text was translated from another language. Extract the information accurately." : ""}`
       },
