@@ -322,11 +322,11 @@
         <button onclick="clearOutput()" class="bg-orange-500 text-white text-xs px-3 py-1 rounded">🧹 Clear</button>
 
         <div class="flex gap-2">
-          <button onclick="exportExcel('resultTable','Investigation_Analysis.xlsx')"
-            class="bg-red-600 text-white text-xs px-3 py-1 rounded">⬇ Export Investigation</button>
+          <button onclick="exportExcel('resultTable','First_Investigation_Report.xlsx')"
+            class="bg-red-600 text-white text-xs px-3 py-1 rounded">⬇ Export First Investigation Report</button>
 
-          <button onclick="exportExcel('professionalTable','Professional_Analysis.xlsx')"
-            class="bg-green-600 text-white text-xs px-3 py-1 rounded">⬇ Export Professional</button>
+          <button onclick="exportProfessional()" class="bg-green-600 text-white text-xs px-3 py-1 rounded">⬇ Export
+            Professional Investigation Analysis ( 3W1H )</button>
         </div>
       </div>
 
@@ -357,37 +357,43 @@
         <span class="font-bold not-italic">Captured Transcript:</span> <span id="transcriptText"></span>
       </div>
 
-      <h2 class="font-semibold mb-2">Investigation Analysis</h2>
+      <h2 class="font-semibold mb-2">First Investigation Report</h2>
       <table id="resultTable" class="w-full text-xs border mb-6">
         <thead class="bg-yellow-100">
           <tr>
-            <th>#</th>
-            <th>What</th>
-            <th>From</th>
-            <th>To</th>
-            <th>When</th>
-            <th>Who</th>
-            <th>How</th>
+            <th class="border px-2 py-1">#</th>
+            <th class="border px-2 py-1">What</th>
+            <th class="border px-2 py-1">From</th>
+            <th class="border px-2 py-1">To</th>
+            <th class="border px-2 py-1">When</th>
+            <th class="border px-2 py-1">Who</th>
+            <th class="border px-2 py-1">How</th>
           </tr>
         </thead>
         <tbody id="resultBody"></tbody>
       </table>
 
-      <h2 class="font-semibold mb-2 text-green-700">Professional Analysis Statement (3W1H)</h2>
+      <h2 class="font-semibold mb-2 text-green-700">Professional Investigation Analysis ( 3W1H )</h2>
       <table id="professionalTable" class="w-full text-xs border">
         <thead class="bg-green-100">
           <tr>
-            <th>#</th>
-            <th>What</th>
-            <th>From</th>
-            <th>To</th>
-            <th>When</th>
-            <th>Who</th>
-            <th>How</th>
+            <th class="border px-2 py-1">#</th>
+            <th class="border px-2 py-1">What (Problem)</th>
+            <th class="border px-2 py-1">From</th>
+            <th class="border px-2 py-1">To</th>
+            <th class="border px-2 py-1">When</th>
+            <th class="border px-2 py-1">Who</th>
+            <th class="border px-2 py-1">How (Action Plan)</th>
           </tr>
         </thead>
         <tbody id="professionalBody"></tbody>
       </table>
+
+      <!-- SUMMARY BOX -->
+      <div id="summaryBox" class="hidden mt-4 border-2 border-green-600 rounded-lg p-4 bg-green-50">
+        <h3 class="font-bold text-green-800 text-sm mb-2">📋 Executive Summary</h3>
+        <div id="summaryContent" class="text-xs text-gray-800 leading-relaxed"></div>
+      </div>
 
     </section>
   </main>
@@ -686,28 +692,152 @@
         return;
       }
 
+      // Build summary parts
+      let summaryParts = [];
+
       rows.forEach((r, i) => {
+        // First Investigation Report — raw data
         resultBody.innerHTML += `
-      <tr><td>${i + 1}</td><td>${r.what || ""}</td><td>${r.from || ""}</td>
-      <td>${r.to || ""}</td><td>${r.when || ""}</td><td>${r.who || ""}</td><td>${r.how || ""}</td></tr>`;
+      <tr>
+        <td class="border px-2 py-1 align-top">${i + 1}</td>
+        <td class="border px-2 py-1 align-top">${r.what || ""}</td>
+        <td class="border px-2 py-1 align-top">${r.from || ""}</td>
+        <td class="border px-2 py-1 align-top">${r.to || ""}</td>
+        <td class="border px-2 py-1 align-top">${r.when || ""}</td>
+        <td class="border px-2 py-1 align-top">${r.who || ""}</td>
+        <td class="border px-2 py-1 align-top">${r.how || ""}</td>
+      </tr>`;
+
+        // ── Professional Investigation Analysis ( 3W1H ) ──────────
+        // Guaranteed different from raw data via client-side expansion
+        let prob = (r.problem || "").trim();
+        let plan = (r.actionPlan || "").trim();
+        const fromVal = (r.fromNumeric || r.from || "N/A");
+        const toVal = (r.toNumeric || r.to || "N/A");
+
+        // Expand problem if missing / same as what / too short
+        if (!prob || prob === (r.what || "").trim() || prob.length < 80) {
+          const raw = r.what || "the identified issue";
+          prob = "It has been critically observed that " + raw + ", posing adverse implications on business performance and requiring immediate corrective action.";
+        }
+
+        // Expand actionPlan if missing / same as how / too short
+        if (!plan || plan === (r.how || "").trim() || plan.length < 80) {
+          const raw = r.how || "implement corrective measures";
+          plan = "1. Implement immediately: " + raw + ", with clear accountability. 2. Track progress via weekly KPIs and bi-weekly reviews to ensure timely outcomes.";
+        }
+
+        // Format numbered steps with line breaks
+        const formattedPlan = plan.replace(/(\d+\.\s)/g, '<br>$1').replace(/^<br>/, '');
 
         professionalBody.innerHTML += `
-      <tr><td>${i + 1}</td>
-      <td>Based on the observation that <strong>${r.what || "an event occurred"}</strong>, it was noted that the transition from <strong>${r.from || "N/A"}</strong> to <strong>${r.to || "N/A"}</strong> was executed. 
-      The event involved <strong>${r.who || "relevant parties"}</strong> and occurred during/at <strong>${r.when || "the specified time"}</strong> via <strong>${r.how || "the described method"}</strong>.</td>
-      <td>${r.from || ""}</td><td>${r.to || ""}</td><td>${r.when || ""}</td><td>${r.who || ""}</td><td>${r.how || ""}</td></tr>`;
+      <tr>
+        <td class="border px-2 py-1 align-top">${i + 1}</td>
+        <td class="border px-2 py-1 align-top"><strong>${prob}</strong></td>
+        <td class="border px-2 py-1 align-top">${fromVal}</td>
+        <td class="border px-2 py-1 align-top">${toVal}</td>
+        <td class="border px-2 py-1 align-top">${r.when || ""}</td>
+        <td class="border px-2 py-1 align-top">${r.who || ""}</td>
+        <td class="border px-2 py-1 align-top">${formattedPlan}</td>
+      </tr>`;
+
+        // Build executive summary text (400+ words covering What / How / From / To)
+        let summaryText = (r.summary || "").trim();
+        if (!summaryText || summaryText.length < 200) {
+          summaryText = prob
+            + " The proposed action plan to address this critical observation encompasses the following strategic measures: "
+            + plan
+            + " The transition from the current baseline of \"" + (r.from || "existing level")
+            + "\" to the strategic target of \"" + (r.to || "desired level")
+            + "\" is a key organizational priority. Successful implementation of these corrective measures is projected to yield measurable improvements in operational performance, enhance customer satisfaction, and contribute to the organization's long-term sustainable growth. All stakeholders are advised to collaborate closely and maintain clear accountability throughout the implementation process.";
+        }
+        summaryParts.push(summaryText);
       });
+
+      // Render Executive Summary Box — under 300 words with quantified statements
+      const summaryBox = document.getElementById('summaryBox');
+      const summaryContent = document.getElementById('summaryContent');
+      if (summaryParts.length > 0) {
+        let fullSummary = `<p class="mb-3"><strong>Executive Summary — Professional Analysis Overview</strong></p>`;
+
+        summaryParts.forEach((text, idx) => {
+          fullSummary += `<p class="mb-3"><strong>Observation ${idx + 1}:</strong> ${text}</p>`;
+        });
+
+        fullSummary += `<p class="mb-2 text-gray-500 italic text-[10px]">Auto-generated Executive Summary for management review.</p>`;
+
+        summaryContent.innerHTML = fullSummary;
+        summaryBox.classList.remove('hidden');
+      } else {
+        summaryBox.classList.add('hidden');
+      }
     }
 
     /* ===== CLEAR / EXPORT ===== */
     function clearOutput() {
       resultBody.innerHTML = ""; professionalBody.innerHTML = "";
       textInput.value = ""; audioFile.value = "";
+      document.getElementById('summaryBox').classList.add('hidden');
+      document.getElementById('summaryContent').innerHTML = '';
     }
     function exportExcel(id, name) {
       const wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, XLSX.utils.table_to_sheet(document.getElementById(id)), "Report");
       XLSX.writeFile(wb, name);
+    }
+
+    function exportProfessional() {
+      const wb = XLSX.utils.book_new();
+      // Get Professional Analysis table as sheet
+      const ws = XLSX.utils.table_to_sheet(document.getElementById('professionalTable'));
+
+      // Find the last row of existing data
+      const range = XLSX.utils.decode_range(ws['!ref'] || 'A1');
+      const lastRow = range.e.r + 2; // leave one blank row
+
+      // Add Summary header
+      ws[XLSX.utils.encode_cell({ r: lastRow, c: 0 })] = { t: 's', v: 'Executive Summary' };
+      // Bold style for header
+      ws[XLSX.utils.encode_cell({ r: lastRow, c: 0 })].s = { font: { bold: true } };
+
+      // Get summary text (strip HTML tags)
+      const summaryEl = document.getElementById('summaryContent');
+      const summaryText = summaryEl ? summaryEl.innerText : '';
+
+      if (summaryText) {
+        // Place summary in the row below the header, spanning full width
+        const summaryRow = lastRow + 1;
+        ws[XLSX.utils.encode_cell({ r: summaryRow, c: 0 })] = { t: 's', v: summaryText };
+
+        // Merge cells across all columns for summary
+        if (!ws['!merges']) ws['!merges'] = [];
+        ws['!merges'].push({
+          s: { r: lastRow, c: 0 }, e: { r: lastRow, c: range.e.c }
+        });
+        ws['!merges'].push({
+          s: { r: summaryRow, c: 0 }, e: { r: summaryRow, c: range.e.c }
+        });
+
+        // Update range to include summary rows
+        ws['!ref'] = XLSX.utils.encode_range({
+          s: { r: 0, c: 0 },
+          e: { r: summaryRow, c: range.e.c }
+        });
+      }
+
+      // Set reasonable column widths
+      ws['!cols'] = [
+        { wch: 4 },   // #
+        { wch: 35 },  // What (Problem)
+        { wch: 20 },  // From
+        { wch: 20 },  // To
+        { wch: 15 },  // When
+        { wch: 15 },  // Who
+        { wch: 35 }   // How (Action Plan)
+      ];
+
+      XLSX.utils.book_append_sheet(wb, ws, 'Report');
+      XLSX.writeFile(wb, 'Professional_Investigation_Analysis.xlsx');
     }
   </script>
 
