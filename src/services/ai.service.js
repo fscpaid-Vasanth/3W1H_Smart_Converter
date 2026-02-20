@@ -124,9 +124,9 @@ Each object MUST have ALL of these fields:
 --- Professional Investigation Analysis ( 3W1H ) fields ---
 The fields below must be DIFFERENT from the raw standard fields (what, how) above. Use professional corporate language.
 
-- problem: A concise professional problem statement (25-35 words). Rephrase the raw "what" professionally. Example: "It has been critically observed that [issue], posing adverse implications on performance and requiring immediate corrective action."
+- problem: A concise professional problem statement (exactly 25-30 words). Rephrase the raw "what" professionally. MUST be between 25 and 30 words. Example structure: "It has been critically observed that [issue], posing adverse implications on performance and requiring immediate corrective action."
 
-- actionPlan: A concise professional action plan (25-35 words, 2 numbered steps). Rephrase the raw "how" professionally. Example: "1. Immediately implement [action] with clear accountability. 2. Track progress via weekly KPIs to ensure performance."
+- actionPlan: A concise professional action plan (exactly 25-30 words, 2 numbered steps). Rephrase the raw "how" professionally. MUST be between 25 and 30 words. Example structure: "1. Immediately implement [action] with clear accountability. 2. Track progress via weekly KPIs to ensure performance."
 
 - fromNumeric: The starting metric with a brief professional qualifier (1 sentence, e.g., "Current baseline: 2 executives, assessed as below optimal operational requirement").
 

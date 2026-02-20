@@ -716,13 +716,13 @@
         const toVal = (r.toNumeric || r.to || "N/A");
 
         // Expand problem ONLY if missing / same as what / too short
-        const rawWhat = (r.what || "").trim();
+        const rawWhat = (r.what || "").trim().replace(/\.*$/, ""); // Remove trailing periods
         if (!prob || prob === rawWhat || prob.length < 30) {
-          prob = "It has been critically observed that " + (rawWhat || "the identified issue") + ", posing adverse implications on performance and requiring immediate corrective action.";
+          prob = "It has been critically observed that " + (rawWhat || "the identified issue") + ", adversely affecting organization performance and necessitating urgent corrective intervention.";
         }
 
         // Expand actionPlan ONLY if missing / same as how / too short
-        const rawHow = (r.how || "").trim();
+        const rawHow = (r.how || "").trim().replace(/\.*$/, ""); // Remove trailing periods
         if (!plan || plan === rawHow || plan.length < 30) {
           plan = "1. Implement immediately: " + (rawHow || "corrective measures") + ". 2. Track progress via monthly KPIs to ensure sustainable outcomes.";
         }
@@ -754,20 +754,17 @@
         summaryParts.push(summaryText);
       });
 
-      // Render Executive Summary Box — under 300 words with quantified statements
+      // Render Executive Summary Box
       const summaryBox = document.getElementById('summaryBox');
       const summaryContent = document.getElementById('summaryContent');
       if (summaryParts.length > 0) {
-        let fullSummary = `<p class="mb-3"><strong>Executive Summary — Professional Analysis Overview</strong></p>`;
-
-        summaryParts.forEach((text, idx) => {
-          fullSummary += `<p class="mb-3"><strong>Observation ${idx + 1}:</strong> ${text}</p>`;
-        });
-
-        fullSummary += `<p class="mb-2 text-gray-500 italic text-[10px]">Auto-generated Executive Summary for management review.</p>`;
-
-        summaryContent.innerHTML = fullSummary;
         summaryBox.classList.remove('hidden');
+        summaryContent.innerHTML = summaryParts.map((p, idx) => `
+          <div class="${idx > 0 ? 'mt-4 pt-4 border-t' : ''}">
+            <div class="font-bold mb-1 text-green-700">Analysis Row #${idx + 1}:</div>
+            ${p}
+          </div>
+        `).join('');
       } else {
         summaryBox.classList.add('hidden');
       }
