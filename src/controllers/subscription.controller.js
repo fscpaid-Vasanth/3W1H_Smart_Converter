@@ -13,68 +13,78 @@ const PLANS = {
   "plan_SGJDEt9DtLott3": { name: "Premium", credits: -1 } // -1 = unlimited
 };
 
-// ===== DUAL STORAGE: Firestore (persistent) + In-memory (fallback) =====
-const userSubscriptions = new Map(); // Fallback if Firestore unavailable
+// ===== FIRESTORE STORAGE =====
+// All subscriptions are stored in Firestore per user (no shared in-memory fallback)
 
 function getDb() {
   try {
-    // Check if Firebase Admin is initialized
     if (admin.apps.length > 0) {
       return admin.firestore();
     }
   } catch (e) {
-    console.warn("⚠️ Firestore not available, using in-memory store");
+    console.error("❌ Firestore unavailable:", e.message);
   }
   return null;
 }
 
-// Read subscription: try Firestore first, then in-memory
+/**
+ * Safety guard: ensure we never operate on a shared/invalid userId.
+ * If userId is missing or looks like a dev fallback, throw an error so the
+ * caller returns a 401 instead of silently reading/writing shared data.
+ */
+function assertUserId(userId) {
+  if (!userId || userId === 'dev-user' || userId === 'undefined') {
+    throw new Error(`Invalid userId: "${userId}". Firebase Auth must be properly initialized.`);
+  }
+}
+
+// Read subscription from Firestore (per user)
 async function readSubscription(userId) {
+  assertUserId(userId);
   const db = getDb();
-  if (db) {
-    try {
-      const doc = await db.collection("subscriptions").doc(userId).get();
-      if (doc.exists) return doc.data();
-    } catch (e) {
-      console.error("⚠️ Firestore read failed:", e.message);
-    }
+  if (!db) {
+    console.error("❌ Firestore not available. Cannot read subscription.");
+    return null;
   }
-  // Fallback to in-memory
-  return userSubscriptions.get(userId) || null;
+  try {
+    const doc = await db.collection("subscriptions").doc(userId).get();
+    if (doc.exists) return doc.data();
+    return null;
+  } catch (e) {
+    console.error(`⚠️ Firestore read failed for user ${userId}:`, e.message);
+    return null;
+  }
 }
 
-// Write subscription: try Firestore first, always write to in-memory
+// Write subscription to Firestore (per user)
 async function writeSubscription(userId, data) {
-  // Always save to in-memory (instant, reliable)
-  userSubscriptions.set(userId, data);
-
-  // Try to save to Firestore (persistent)
+  assertUserId(userId);
   const db = getDb();
-  if (db) {
-    try {
-      await db.collection("subscriptions").doc(userId).set(data);
-      console.log(`✅ Saved to Firestore for user ${userId}`);
-    } catch (e) {
-      console.error("⚠️ Firestore write failed, using in-memory only:", e.message);
-    }
+  if (!db) {
+    console.error("❌ Firestore not available. Cannot write subscription.");
+    return;
+  }
+  try {
+    await db.collection("subscriptions").doc(userId).set(data);
+    console.log(`✅ Saved subscription to Firestore for user ${userId}: ${data.planName}`);
+  } catch (e) {
+    console.error(`⚠️ Firestore write failed for user ${userId}:`, e.message);
   }
 }
 
-// Update subscription fields
+// Update subscription fields in Firestore (per user)
 async function updateSubscription(userId, updates) {
-  // Update in-memory
-  const existing = userSubscriptions.get(userId) || {};
-  const merged = { ...existing, ...updates };
-  userSubscriptions.set(userId, merged);
-
-  // Try Firestore
+  assertUserId(userId);
   const db = getDb();
-  if (db) {
-    try {
-      await db.collection("subscriptions").doc(userId).update(updates);
-    } catch (e) {
-      console.error("⚠️ Firestore update failed:", e.message);
-    }
+  if (!db) {
+    console.error("❌ Firestore not available. Cannot update subscription.");
+    return;
+  }
+  try {
+    await db.collection("subscriptions").doc(userId).set(updates, { merge: true });
+    console.log(`✅ Updated subscription in Firestore for user ${userId}`);
+  } catch (e) {
+    console.error(`⚠️ Firestore update failed for user ${userId}:`, e.message);
   }
 }
 
