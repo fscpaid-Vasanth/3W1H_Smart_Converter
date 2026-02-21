@@ -442,8 +442,10 @@
           body: JSON.stringify({ amount })
         });
         if (!res.ok) {
-          console.error("❌ Backend credit deduction failed");
-          // Revert local UI if backend fails (optional but safer)
+          const errData = await res.json().catch(() => ({}));
+          console.error("❌ Backend credit deduction failed:", errData);
+          alert("Unable to process credits: " + (errData.error || "Technical error"));
+          // Revert local UI if backend fails
           credits += amount;
           creditBalance.textContent = credits;
           return false;
@@ -451,6 +453,7 @@
         return true;
       } catch (e) {
         console.error("Credit deduction persist failed:", e);
+        alert("Network error. Please check your connection and try again.");
         credits += amount;
         creditBalance.textContent = credits;
         return false;

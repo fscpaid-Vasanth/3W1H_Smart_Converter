@@ -22,9 +22,12 @@ app.use(cors({
     "http://localhost:5000",
     "http://127.0.0.1:5000",
     "https://threew1h-smart-converter.web.app",
-    "https://w1h-smart-converter.firebaseapp.com"
+    "https://w1h-smart-converter.firebaseapp.com",
+    "https://threew1h-smart-converter.onrender.com"
   ],
-  credentials: true
+  credentials: true,
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization"]
 }));
 app.use(express.json());
 
