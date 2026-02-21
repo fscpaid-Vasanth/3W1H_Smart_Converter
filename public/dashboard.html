@@ -436,15 +436,25 @@
       // Persist to Firestore via backend
       try {
         const apiBase = window.API_BASE_URL || "";
-        await fetch(apiBase + "/api/subscription/deduct-credits", {
+        const res = await fetch(apiBase + "/api/subscription/deduct-credits", {
           method: "POST",
           headers: { "Content-Type": "application/json", "Authorization": "Bearer " + authToken },
           body: JSON.stringify({ amount })
         });
+        if (!res.ok) {
+          console.error("❌ Backend credit deduction failed");
+          // Revert local UI if backend fails (optional but safer)
+          credits += amount;
+          creditBalance.textContent = credits;
+          return false;
+        }
+        return true;
       } catch (e) {
-        console.warn("Credit deduction persist failed (UI still updated):", e);
+        console.error("Credit deduction persist failed:", e);
+        credits += amount;
+        creditBalance.textContent = credits;
+        return false;
       }
-      return true;
     }
 
     /* ===== OVERLAY ===== */
@@ -484,7 +494,7 @@
       if (type === "live") return;
 
       const cost = type === "text" ? 10 : 20;
-      if (!deduct(cost)) return;
+      if (!(await deduct(cost))) return;
 
       show("Processing…");
       let data;
@@ -621,15 +631,20 @@
         return;
       }
 
-      deduct(30);
+      if (!(await deduct(30))) return;
       show("Analyzing live audio…");
 
       try {
+        const apiBase = window.API_BASE_URL || "";
         const fd = new FormData();
         fd.append("audio", blob, "live." + (blob.type.split("/")[1]?.split(";")[0] || "webm"));
 
         console.log("📤 UPLOADING LIVE AUDIO...");
-        const uploadRes = await fetch("/api/upload", { method: "POST", body: fd });
+        const uploadRes = await fetch(apiBase + "/api/upload", {
+          method: "POST",
+          body: fd,
+          headers: { "Authorization": "Bearer " + authToken }
+        });
         if (!uploadRes.ok) {
           const err = await uploadRes.json();
           throw new Error(err.error || "Upload failed");
@@ -638,9 +653,12 @@
         console.log("✅ UPLOAD SUCCESS:", u.filePath);
 
         console.log("🔍 ANALYZING 3W1H...");
-        const analyzeRes = await fetch("/api/analyze", {
+        const analyzeRes = await fetch(apiBase + "/api/analyze", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": "Bearer " + authToken
+          },
           body: JSON.stringify({ filePath: u.filePath, framework: "3W1H", language: "en" })
         });
         if (!analyzeRes.ok) {
