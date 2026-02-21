@@ -5,21 +5,35 @@ import { readFileSync } from 'fs';
 let firebaseAdmin;
 
 try {
+    const serviceAccountEnv = process.env.FIREBASE_SERVICE_ACCOUNT;
     const serviceAccountPath = process.env.FIREBASE_SERVICE_ACCOUNT_PATH || './firebase-service-account.json';
 
-    // Check if service account file exists
-    try {
-        const serviceAccount = JSON.parse(readFileSync(serviceAccountPath, 'utf8'));
+    if (serviceAccountEnv) {
+        // 1. Try loading from environment variable (standard for Render/Production)
+        try {
+            const serviceAccount = JSON.parse(serviceAccountEnv);
+            firebaseAdmin = admin.initializeApp({
+                credential: admin.credential.cert(serviceAccount)
+            });
+            console.log('✅ Firebase Admin SDK initialized via environment variable');
+        } catch (parseError) {
+            console.error('❌ Failed to parse FIREBASE_SERVICE_ACCOUNT environment variable:', parseError.message);
+        }
+    }
 
-        firebaseAdmin = admin.initializeApp({
-            credential: admin.credential.cert(serviceAccount)
-        });
-
-        console.log('✅ Firebase Admin SDK initialized successfully');
-    } catch (fileError) {
-        console.warn('⚠️  Firebase service account file not found. Authentication will not work.');
-        console.warn('   Please add firebase-service-account.json to your project root.');
-        console.warn('   Download it from: Firebase Console → Project Settings → Service Accounts');
+    if (!firebaseAdmin) {
+        // 2. Fallback to local file
+        try {
+            const serviceAccount = JSON.parse(readFileSync(serviceAccountPath, 'utf8'));
+            firebaseAdmin = admin.initializeApp({
+                credential: admin.credential.cert(serviceAccount)
+            });
+            console.log('✅ Firebase Admin SDK initialized via service account file');
+        } catch (fileError) {
+            console.warn('⚠️  Firebase Admin could not be initialized (No file or valid env var).');
+            console.warn('   In Production: Set FIREBASE_SERVICE_ACCOUNT environment variable to the JSON contents.');
+            console.warn('   In Development: Add firebase-service-account.json to your project root.');
+        }
     }
 } catch (error) {
     console.error('❌ Firebase Admin initialization error:', error.message);
