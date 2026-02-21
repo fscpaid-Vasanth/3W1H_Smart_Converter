@@ -109,11 +109,12 @@ export const analyzeAudio = async (req, res) => {
 
   } catch (err) {
     console.error("❌ ANALYZE AUDIO FATAL ERROR:", err);
+    console.error("❌ ERROR STACK:", err.stack);
     return res.status(500).json({
       framework: req.body?.framework || "3W1H",
       confidenceScore: 0,
       rows: [],
-      message: "Unexpected server error during audio analysis"
+      message: "Server error during audio analysis: " + (err.message || "Unknown error")
     });
   } finally {
     // 🧹 CLEANUP: Delete audio file after processing (success or error)

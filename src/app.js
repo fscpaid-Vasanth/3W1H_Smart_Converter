@@ -41,8 +41,8 @@ app.use(express.static(path.join(__dirname, "../public"), {
     if (/\.(png|jpg|jpeg|gif|svg|ico|woff|woff2|ttf|eot)$/i.test(filePath)) {
       res.setHeader('Cache-Control', 'public, max-age=604800'); // 7 days
     }
-    // HTML: always revalidate (so updates are instant)
-    else if (/\.html$/i.test(filePath)) {
+    // HTML & Config: always revalidate (so updates are instant)
+    else if (/\.(html|config\.js)$/i.test(filePath) || filePath.endsWith('config.js')) {
       res.setHeader('Cache-Control', 'no-cache, must-revalidate');
     }
     // CSS/JS: cache 1 day

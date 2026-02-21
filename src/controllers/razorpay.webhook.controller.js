@@ -41,14 +41,24 @@ export const razorpayWebhook = async (req, res) => {
       console.log("✅ Subscription Activated:", subEntity.id, "User:", userId);
 
       if (userId) {
+        // Map planId to Plan Name
+        const PLANS = {
+          "plan_SGJ9lQs5QEKndd": "Basic",
+          "plan_SGJCJCot5JdhOo": "Pro",
+          "plan_SGJDEt9DtLott3": "Premium"
+        };
+        const planName = PLANS[subEntity.plan_id] || "Unknown Plan";
+
         // Update Firestore with active subscription
         db.collection("subscriptions").doc(userId).set({
           subscriptionId: subEntity.id,
           planId: subEntity.plan_id,
+          planName: planName,
           status: "ACTIVE",
           activatedAt: new Date().toISOString(),
           updatedAt: new Date().toISOString()
         }, { merge: true });
+        console.log(`📝 Firestore updated for user ${userId} with plan: ${planName}`);
       }
     }
 

@@ -158,11 +158,33 @@ export const getSubscriptionStatus = async (req, res) => {
     // Read from storage
     const stored = await readSubscription(userId);
 
-    if (stored) {
+    if (stored && stored.planName) {
       console.log(`📊 Found subscription:`, stored.planName);
+
+      const paidPlans = ["Basic", "Pro", "Premium"];
+
+      // 🔒 PAYMENT VALIDATION: Paid plans MUST have a paymentId (from activateSubscription)
+      // If a paid plan record exists without a paymentId, it was never legitimately purchased.
+      // This catches stale test/demo data and resets it to Free Trial.
+      if (paidPlans.includes(stored.planName) && !stored.paymentId) {
+        console.log(`🚫 Paid plan "${stored.planName}" found without paymentId for user ${userId}. Resetting to Free Trial.`);
+        const freeTrial = {
+          planName: "Free Trial",
+          status: "ACTIVE",
+          monthlyCredits: 50,
+          remainingCredits: 50,
+          totalCredits: 50,
+          expiryDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+          nextBillingDate: null,
+          createdAt: new Date().toISOString()
+        };
+        await writeSubscription(userId, freeTrial);
+        return res.json(freeTrial);
+      }
 
       // Check if subscription has expired
       if (stored.expiryDate && new Date(stored.expiryDate) < new Date() && stored.planName !== "Free Trial") {
+        console.log(`⏰ Subscription expired for ${userId}, reverting to Free Trial`);
         const freeTrial = {
           planName: "Free Trial",
           status: "EXPIRED",
@@ -180,8 +202,8 @@ export const getSubscriptionStatus = async (req, res) => {
       return res.json(stored);
     }
 
-    // Default: Free Trial for new users
-    console.log(`🆕 New user ${userId}, assigning Free Trial`);
+    // Default: Free Trial for new users or if data is incomplete
+    console.log(`🆕 New or incomplete user data for ${userId}, assigning Free Trial`);
     const subscription = {
       planName: "Free Trial",
       status: "ACTIVE",
@@ -194,6 +216,7 @@ export const getSubscriptionStatus = async (req, res) => {
     };
 
     await writeSubscription(userId, subscription);
+    console.log(`✅ Returning default Free Trial for user ${userId}:`, JSON.stringify(subscription));
     res.json(subscription);
   } catch (err) {
     console.error("SUBSCRIPTION STATUS ERROR:", err);
