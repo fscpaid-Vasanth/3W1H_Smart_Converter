@@ -50,7 +50,7 @@ export const razorpayWebhook = async (req, res) => {
         const planName = PLANS[subEntity.plan_id] || "Unknown Plan";
 
         // Update Firestore with active subscription
-        db.collection("subscriptions").doc(userId).set({
+        await db.collection("subscriptions").doc(userId).set({
           subscriptionId: subEntity.id,
           planId: subEntity.plan_id,
           planName: planName,
@@ -73,7 +73,7 @@ export const razorpayWebhook = async (req, res) => {
         const subDoc = await db.collection("subscriptions").doc(userId).get();
         if (subDoc.exists) {
           const data = subDoc.data();
-          db.collection("subscriptions").doc(userId).update({
+          await db.collection("subscriptions").doc(userId).update({
             remainingCredits: data.totalCredits, // Reset to full credits
             lastChargedAt: new Date().toISOString(),
             updatedAt: new Date().toISOString()
@@ -89,7 +89,7 @@ export const razorpayWebhook = async (req, res) => {
 
       if (userId) {
         // Downgrade to Free Trial
-        db.collection("subscriptions").doc(userId).update({
+        await db.collection("subscriptions").doc(userId).update({
           planName: "Free Trial",
           status: "CANCELLED",
           totalCredits: 50,

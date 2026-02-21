@@ -211,33 +211,41 @@ export const getSubscriptionStatus = async (req, res) => {
 
       // Patch missing expiryDate (old records before fix)
       if (!stored.expiryDate) {
-        stored.expiryDate = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
-        await updateSubscription(userId, { expiryDate: stored.expiryDate });
+        const dateStr = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+        stored.expiryDate = dateStr;
+        await updateSubscription(userId, { expiryDate: dateStr });
         console.log(`🔧 Patched missing expiryDate for user ${userId}`);
       }
 
       return res.json(stored);
     }
 
-    // Default: Free Trial for new users or if data is incomplete
-    console.log(`🆕 New or incomplete user data for ${userId}, assigning Free Trial`);
-    const subscription = {
+    // Default: Assign Free Trial defaults but MERGE, don't OVERWRITE
+    // This prevents wiping out remainingCredits if they were saved without a planName.
+    console.log(`🆕 Assigning/Merging Free Trial defaults for ${userId}`);
+    const defaults = {
       planName: "Free Trial",
       status: "ACTIVE",
       monthlyCredits: 50,
-      remainingCredits: 50,
       totalCredits: 50,
       expiryDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-      nextBillingDate: null,
-      createdAt: new Date().toISOString()
+      updatedAt: new Date().toISOString()
     };
 
-    await writeSubscription(userId, subscription);
-    console.log(`✅ Returning default Free Trial for user ${userId}:`, JSON.stringify(subscription));
-    res.json(subscription);
+    // Only set remainingCredits to 50 if it's currently missing or invalid
+    if (!stored || (typeof stored.remainingCredits !== 'number' && stored.remainingCredits !== 'Unlimited')) {
+      defaults.remainingCredits = 50;
+    }
+
+    await updateSubscription(userId, defaults);
+
+    // Fetch again to return the merged result
+    const final = await readSubscription(userId);
+    res.json(final || { ...defaults, remainingCredits: defaults.remainingCredits || 50 });
+
   } catch (err) {
-    console.error("SUBSCRIPTION STATUS ERROR:", err);
-    res.status(500).json({ error: "Unable to fetch subscription status" });
+    console.error("❌ SUBSCRIPTION STATUS ERROR:", err.message, err.stack);
+    res.status(500).json({ error: "Unable to fetch subscription status", details: err.message });
   }
 };
 
