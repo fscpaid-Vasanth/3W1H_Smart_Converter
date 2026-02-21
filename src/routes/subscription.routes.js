@@ -3,6 +3,7 @@ import {
   createSubscription,
   getSubscriptionStatus,
   activateSubscription,
+  deductCredits,
   pauseSubscription,
   resumeSubscription,
   cancelSubscription
@@ -13,6 +14,7 @@ const router = express.Router();
 
 router.post("/create", createSubscription);
 router.post("/activate", activateSubscription);
+router.post("/deduct-credits", deductCredits);
 
 router.get("/status", getSubscriptionStatus);
 

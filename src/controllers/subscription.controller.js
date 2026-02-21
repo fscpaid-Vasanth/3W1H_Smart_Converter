@@ -209,6 +209,13 @@ export const getSubscriptionStatus = async (req, res) => {
         return res.json(freeTrial);
       }
 
+      // Patch missing expiryDate (old records before fix)
+      if (!stored.expiryDate) {
+        stored.expiryDate = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+        await updateSubscription(userId, { expiryDate: stored.expiryDate });
+        console.log(`🔧 Patched missing expiryDate for user ${userId}`);
+      }
+
       return res.json(stored);
     }
 
@@ -233,6 +240,52 @@ export const getSubscriptionStatus = async (req, res) => {
     res.status(500).json({ error: "Unable to fetch subscription status" });
   }
 };
+
+/**
+ * POST /api/subscription/deduct-credits
+ * Called by frontend AFTER successful analysis to persist credit deduction to Firestore.
+ */
+export const deductCredits = async (req, res) => {
+  try {
+    const { amount } = req.body;
+    const userId = req.user.uid;
+
+    if (!amount || isNaN(amount) || amount <= 0) {
+      return res.status(400).json({ error: "Invalid amount" });
+    }
+
+    const stored = await readSubscription(userId);
+    if (!stored) {
+      return res.status(404).json({ error: "No subscription found" });
+    }
+
+    // Unlimited plans — no deduction needed
+    if (stored.remainingCredits === "Unlimited" || stored.planName === "Premium") {
+      return res.json({ remainingCredits: "Unlimited", planName: stored.planName });
+    }
+
+    const current = typeof stored.remainingCredits === "number"
+      ? stored.remainingCredits
+      : parseInt(stored.remainingCredits) || 0;
+
+    if (current < amount) {
+      return res.status(402).json({ error: "Insufficient credits", remainingCredits: current });
+    }
+
+    const newCredits = current - amount;
+    await updateSubscription(userId, {
+      remainingCredits: newCredits,
+      updatedAt: new Date().toISOString()
+    });
+
+    console.log(`💳 Deducted ${amount} credits for user ${userId}. Remaining: ${newCredits}`);
+    res.json({ remainingCredits: newCredits, planName: stored.planName });
+  } catch (err) {
+    console.error("DEDUCT CREDITS ERROR:", err);
+    res.status(500).json({ error: "Failed to deduct credits" });
+  }
+};
+
 
 /**
  * PAUSE SUBSCRIPTION

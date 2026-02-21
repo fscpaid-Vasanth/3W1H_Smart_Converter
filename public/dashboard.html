@@ -425,10 +425,26 @@
     let isUnlimited = false;
 
     creditBalance.textContent = credits;
-    function deduct(amount) {
+
+    // Deduct credits locally AND persist to backend
+    async function deduct(amount) {
       if (isUnlimited) return true;
-      if (credits < amount) { alert("Insufficient credits. Recharge required."); return false; }
-      credits -= amount; creditBalance.textContent = credits; return true;
+      if (credits < amount) { alert("Insufficient credits. Please upgrade your plan."); return false; }
+      credits -= amount;
+      creditBalance.textContent = credits;
+
+      // Persist to Firestore via backend
+      try {
+        const apiBase = window.API_BASE_URL || "";
+        await fetch(apiBase + "/api/subscription/deduct-credits", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "Authorization": "Bearer " + authToken },
+          body: JSON.stringify({ amount })
+        });
+      } catch (e) {
+        console.warn("Credit deduction persist failed (UI still updated):", e);
+      }
+      return true;
     }
 
     /* ===== OVERLAY ===== */
@@ -474,17 +490,18 @@
       let data;
 
       try {
+        const apiBase = window.API_BASE_URL || "";
         if (type === "text") {
-          data = await (await fetch("/api/analyze/text", {
+          data = await (await fetch(apiBase + "/api/analyze/text", {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
+            headers: { "Content-Type": "application/json", "Authorization": "Bearer " + authToken },
             body: JSON.stringify({ text: textInput.value, framework: "3W1H" })
           })).json();
         } else if (type === "audio") {
           if (!audioFile.files[0]) { alert("Select audio file"); hide(); return; }
           const fd = new FormData();
           fd.append("audio", audioFile.files[0]);
-          const uploadRes = await fetch("/api/upload", { method: "POST", body: fd });
+          const uploadRes = await fetch(apiBase + "/api/upload", { method: "POST", body: fd, headers: { "Authorization": "Bearer " + authToken } });
           if (!uploadRes.ok) {
             const err = await uploadRes.json();
             hide();
@@ -492,9 +509,9 @@
             return;
           }
           const u = await uploadRes.json();
-          data = await (await fetch("/api/analyze", {
+          data = await (await fetch(apiBase + "/api/analyze", {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
+            headers: { "Content-Type": "application/json", "Authorization": "Bearer " + authToken },
             body: JSON.stringify({ filePath: u.filePath, framework: "3W1H", language: "en" })
           })).json();
         }
@@ -844,7 +861,8 @@
   <script>
     async function startSubscription(planId) {
       try {
-        const res = await fetch("/api/subscription/create", {
+        const apiBase = window.API_BASE_URL || "";
+        const res = await fetch(apiBase + "/api/subscription/create", {
           method: "POST",
           headers: { "Content-Type": "application/json", "Authorization": "Bearer " + authToken },
           body: JSON.stringify({ planId })
@@ -861,7 +879,7 @@
           handler: async function (response) {
             // Activate the plan on the server
             try {
-              const activateRes = await fetch("/api/subscription/activate", {
+              const activateRes = await fetch(apiBase + "/api/subscription/activate", {
                 method: "POST",
                 headers: { "Content-Type": "application/json", "Authorization": "Bearer " + authToken },
                 body: JSON.stringify({ planId: planId, paymentId: response.razorpay_payment_id })
