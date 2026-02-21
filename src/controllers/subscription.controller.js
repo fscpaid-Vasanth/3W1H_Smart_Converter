@@ -51,8 +51,8 @@ async function readSubscription(userId) {
     if (doc.exists) return doc.data();
     return null;
   } catch (e) {
-    console.error(`⚠️ Firestore read failed for user ${userId}:`, e.message);
-    return null;
+    console.error(`❌ Firestore read failed for user ${userId}:`, e.message);
+    throw e; // Re-throw so caller knows it failed
   }
 }
 
@@ -60,15 +60,14 @@ async function readSubscription(userId) {
 async function writeSubscription(userId, data) {
   assertUserId(userId);
   const db = getDb();
-  if (!db) {
-    console.error("❌ Firestore not available. Cannot write subscription.");
-    return;
-  }
+  if (!db) throw new Error("Firestore not available");
+
   try {
     await db.collection("subscriptions").doc(userId).set(data);
     console.log(`✅ Saved subscription to Firestore for user ${userId}: ${data.planName}`);
   } catch (e) {
-    console.error(`⚠️ Firestore write failed for user ${userId}:`, e.message);
+    console.error(`❌ Firestore write failed for user ${userId}:`, e.message);
+    throw e;
   }
 }
 
@@ -76,15 +75,14 @@ async function writeSubscription(userId, data) {
 async function updateSubscription(userId, updates) {
   assertUserId(userId);
   const db = getDb();
-  if (!db) {
-    console.error("❌ Firestore not available. Cannot update subscription.");
-    return;
-  }
+  if (!db) throw new Error("Firestore not available");
+
   try {
     await db.collection("subscriptions").doc(userId).set(updates, { merge: true });
     console.log(`✅ Updated subscription in Firestore for user ${userId}`);
   } catch (e) {
-    console.error(`⚠️ Firestore update failed for user ${userId}:`, e.message);
+    console.error(`❌ Firestore update failed for user ${userId}:`, e.message);
+    throw e;
   }
 }
 
@@ -241,7 +239,7 @@ export const getSubscriptionStatus = async (req, res) => {
 
     // Fetch again to return the merged result
     const final = await readSubscription(userId);
-    res.json(final || { ...defaults, remainingCredits: defaults.remainingCredits || 50 });
+    res.json(final || { ...defaults, remainingCredits: defaults.remainingCredits || 50, version: "v4.1" });
 
   } catch (err) {
     console.error("❌ SUBSCRIPTION STATUS ERROR:", err.message, err.stack);
@@ -257,6 +255,7 @@ export const deductCredits = async (req, res) => {
   try {
     const { amount } = req.body;
     const userId = req.user.uid;
+    console.log(`💰 DEDUCTION REQUEST: User ${userId} requested ${amount} credits. API v4.0`);
 
     if (!amount || isNaN(amount) || amount <= 0) {
       return res.status(400).json({ error: "Invalid amount" });
@@ -287,7 +286,7 @@ export const deductCredits = async (req, res) => {
     });
 
     console.log(`💳 Deducted ${amount} credits for user ${userId}. Remaining: ${newCredits}`);
-    res.json({ remainingCredits: newCredits, planName: stored.planName });
+    res.json({ remainingCredits: newCredits, planName: stored.planName, version: "v4.1" });
   } catch (err) {
     console.error("❌ DEDUCT CREDITS ERROR:", err.message);
     console.error(err.stack);

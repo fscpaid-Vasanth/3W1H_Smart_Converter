@@ -951,12 +951,14 @@
         cardEl.classList.remove("hidden");
         planEl.textContent = "Current Plan: " + planName;
 
-        if (expiryDate && expiryEl) {
+        if (expiryDate && expiryEl && expiryDate !== "undefined") {
           const expDate = new Date(expiryDate);
           expiryEl.textContent = expDate > new Date() ? "Valid until " + expiryDate : "Expired on " + expiryDate;
         } else if (expiryEl) {
-          expiryEl.textContent = "";
+          // Fallback for Free Trial if backend haven't patched it yet
+          expiryEl.textContent = (planName === "Free Trial") ? "Valid for 30 days from signup" : "";
         }
+        console.log(`v4.1: Subscription loaded for ${planName}. Credits: ${creditsVal}`);
 
         if (unlimited) {
           isUnlimited = true;
