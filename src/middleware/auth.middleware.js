@@ -8,16 +8,25 @@ try {
     const serviceAccountEnv = process.env.FIREBASE_SERVICE_ACCOUNT;
     const serviceAccountPath = process.env.FIREBASE_SERVICE_ACCOUNT_PATH || './firebase-service-account.json';
 
-    if (serviceAccountEnv) {
-        // 1. Try loading from environment variable (standard for Render/Production)
+    if (admin.apps.length > 0) {
+        firebaseAdmin = admin.app();
+        console.log('✅ Firebase Admin SDK already initialized from previous request/task');
+    } else if (serviceAccountEnv) {
+        console.log('📡 Detected FIREBASE_SERVICE_ACCOUNT environment variable. Attempting to parse...');
         try {
-            const serviceAccount = JSON.parse(serviceAccountEnv);
+            // Decode if it's base64, otherwise use raw string
+            const rawJson = serviceAccountEnv.trim().startsWith('{')
+                ? serviceAccountEnv
+                : Buffer.from(serviceAccountEnv, 'base64').toString();
+
+            const serviceAccount = JSON.parse(rawJson);
             firebaseAdmin = admin.initializeApp({
                 credential: admin.credential.cert(serviceAccount)
             });
             console.log('✅ Firebase Admin SDK initialized via environment variable');
         } catch (parseError) {
-            console.error('❌ Failed to parse FIREBASE_SERVICE_ACCOUNT environment variable:', parseError.message);
+            console.error('❌ Failed to parse FIREBASE_SERVICE_ACCOUNT environment variable. Error:', parseError.message);
+            console.error('   TIP: If pasting JSON directly fails, try Base64 encoding it and pasting the string instead.');
         }
     }
 
@@ -30,9 +39,8 @@ try {
             });
             console.log('✅ Firebase Admin SDK initialized via service account file');
         } catch (fileError) {
-            console.warn('⚠️  Firebase Admin could not be initialized (No file or valid env var).');
-            console.warn('   In Production: Set FIREBASE_SERVICE_ACCOUNT environment variable to the JSON contents.');
-            console.warn('   In Development: Add firebase-service-account.json to your project root.');
+            console.warn('⚠️  Authentication Warning: No FIREBASE_SERVICE_ACCOUNT variable found and no local file.');
+            console.warn('   The system is running in "restricted" mode. Deductions will fail for security.');
         }
     }
 } catch (error) {

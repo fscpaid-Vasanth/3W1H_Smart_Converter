@@ -984,8 +984,7 @@
 
         if (!res.ok) {
           console.error("❌ Subscription API error:", res.status, res.statusText);
-          // Show card with Free Trial defaults so user always sees something
-          showSubscriptionCard("Free Trial", null, 50, false);
+          showSubscriptionCard("Connection Error", "Check Render Logs", 0, false);
           return;
         }
 
