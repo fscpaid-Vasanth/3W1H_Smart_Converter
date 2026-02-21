@@ -901,72 +901,70 @@
         console.warn("⚠️ Cannot load subscription: no auth token yet");
         return;
       }
+      // Helper to show card with given data (always called, even on error)
+      function showSubscriptionCard(planName, expiryDate, creditsVal, unlimited) {
+        const cardEl = document.getElementById("subscriptionCard");
+        const planEl = document.getElementById("subPlan");
+        const expiryEl = document.getElementById("subExpiry");
+        const creditEl = document.getElementById("creditBalance");
+        if (!cardEl || !planEl) return;
+
+        cardEl.classList.remove("hidden");
+        planEl.textContent = "Current Plan: " + planName;
+
+        if (expiryDate && expiryEl) {
+          const expDate = new Date(expiryDate);
+          expiryEl.textContent = expDate > new Date() ? "Valid until " + expiryDate : "Expired on " + expiryDate;
+        } else if (expiryEl) {
+          expiryEl.textContent = "";
+        }
+
+        if (unlimited) {
+          isUnlimited = true;
+          totalPlanCredits = 0;
+          if (creditEl) creditEl.textContent = "Unlimited";
+        } else {
+          isUnlimited = false;
+          credits = typeof creditsVal === "number" ? creditsVal : parseInt(creditsVal) || 0;
+          if (creditEl) creditEl.textContent = credits;
+          if (planName === "Free Trial") totalPlanCredits = 50;
+          else if (planName === "Basic") totalPlanCredits = 500;
+          else if (planName === "Pro") totalPlanCredits = 1200;
+          else totalPlanCredits = credits;
+        }
+        console.log("✅ Plan loaded:", planName, "| Credits:", unlimited ? "Unlimited" : credits);
+      }
+
       try {
-        const res = await fetch("/api/subscription/status", {
+        const apiBase = window.API_BASE_URL || "";
+        const res = await fetch(apiBase + "/api/subscription/status", {
           headers: { "Authorization": "Bearer " + authToken }
         });
 
         if (!res.ok) {
           console.error("❌ Subscription API error:", res.status, res.statusText);
+          // Show card with Free Trial defaults so user always sees something
+          showSubscriptionCard("Free Trial", null, 50, false);
           return;
         }
 
         const sub = await res.json();
         console.log("📊 Subscription data:", sub);
 
-        // Get DOM elements explicitly
-        const cardEl = document.getElementById("subscriptionCard");
-        const planEl = document.getElementById("subPlan");
-        const expiryEl = document.getElementById("subExpiry");
-        const creditEl = document.getElementById("creditBalance");
+        const isUnlimitedPlan = sub.planName === "Premium" || sub.remainingCredits === "Unlimited";
+        const rc = isUnlimitedPlan ? 0 : (typeof sub.remainingCredits === "number" ? sub.remainingCredits : parseInt(sub.remainingCredits) || 0);
+        showSubscriptionCard(sub.planName || "Free Trial", sub.expiryDate, rc, isUnlimitedPlan);
 
-        if (!cardEl || !planEl) {
-          console.error("❌ Subscription DOM elements not found!");
-          return;
-        }
-
-        // Always show subscription card with plan info
-        cardEl.classList.remove("hidden");
-        planEl.textContent = "Current Plan: " + (sub.planName || "Free Trial");
-
-        if (sub.expiryDate && expiryEl) {
-          const expDate = new Date(sub.expiryDate);
-          const now = new Date();
-          if (expDate > now) {
-            expiryEl.textContent = "Valid until " + sub.expiryDate;
-          } else {
-            expiryEl.textContent = "Expired on " + sub.expiryDate;
-          }
-        } else if (expiryEl) {
-          expiryEl.textContent = "";
-        }
-
-        // Update global credit state
-        if (sub.planName === "Premium" || sub.remainingCredits === "Unlimited") {
-          isUnlimited = true;
-          if (creditEl) creditEl.textContent = "Unlimited";
-          totalPlanCredits = 0;
-        } else {
-          isUnlimited = false;
-          const rc = typeof sub.remainingCredits === "number" ? sub.remainingCredits : parseInt(sub.remainingCredits) || 0;
-          credits = rc;
-          if (creditEl) creditEl.textContent = credits;
-          // Set total plan credits based on plan name
-          if (sub.planName === "Free Trial") totalPlanCredits = 50;
-          else if (sub.planName === "Basic") totalPlanCredits = 500;
-          else if (sub.planName === "Pro") totalPlanCredits = 1200;
-          else totalPlanCredits = (typeof sub.totalCredits === "number" ? sub.totalCredits : parseInt(sub.totalCredits)) || 50;
-        }
-
-        console.log("✅ Plan loaded:", sub.planName, "| Credits:", isUnlimited ? "Unlimited" : credits);
       } catch (e) {
         console.error("❌ Subscription load error:", e);
+        // Always show card even if network fails
+        showSubscriptionCard("Free Trial", null, 50, false);
       }
     }
 
   </script>
 
-  <!-- API Config -->
+  <!-- API Config (loaded first so API_BASE_URL is available everywhere) -->
   <script src="/config.js"></script>
 
   <!-- Firebase Authentication -->
