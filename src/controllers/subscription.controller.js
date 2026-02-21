@@ -281,8 +281,13 @@ export const deductCredits = async (req, res) => {
     console.log(`💳 Deducted ${amount} credits for user ${userId}. Remaining: ${newCredits}`);
     res.json({ remainingCredits: newCredits, planName: stored.planName });
   } catch (err) {
-    console.error("DEDUCT CREDITS ERROR:", err);
-    res.status(500).json({ error: "Failed to deduct credits" });
+    console.error("❌ DEDUCT CREDITS ERROR:", err.message);
+    console.error(err.stack);
+    res.status(500).json({
+      error: "Failed to deduct credits",
+      details: err.message,
+      userId: req.user ? req.user.uid : 'missing'
+    });
   }
 };
 

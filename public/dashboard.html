@@ -444,7 +444,7 @@
         if (!res.ok) {
           const errData = await res.json().catch(() => ({}));
           console.error("❌ Backend credit deduction failed:", errData);
-          alert("Unable to process credits: " + (errData.error || "Technical error"));
+          alert("Unable to process credits: " + (errData.details || errData.error || "Technical error"));
           // Revert local UI if backend fails
           credits += amount;
           creditBalance.textContent = credits;
