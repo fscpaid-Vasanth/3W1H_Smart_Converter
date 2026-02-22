@@ -29,7 +29,13 @@ app.use(cors({
   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
   allowedHeaders: ["Content-Type", "Authorization"]
 }));
-app.use(express.json());
+app.use(express.json({
+  verify: (req, res, buf) => {
+    if (req.originalUrl.includes("/api/webhook/razorpay")) {
+      req.rawBody = buf;
+    }
+  }
+}));
 
 /* PUBLIC ROUTES (no auth required) */
 app.use("/api/webhook", webhookRoutes);

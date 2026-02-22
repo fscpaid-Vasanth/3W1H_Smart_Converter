@@ -91,91 +91,66 @@ export async function translateToEnglish(text, sourceLang) {
 export async function generateStructuredTable(text, framework) {
   const client = getClient();
 
-  // Step 1: Detect language
-  const detectedLang = await detectLanguage(text);
-  let textToAnalyze = text;
-  let wasTranslated = false;
+  console.log("🚀 CONSOLIDATED AI ANALYSIS STARTING...");
 
-  // Step 2: Translation
-  if (detectedLang !== "en") {
-    console.log(`⚠️ Non-English text detected (${detectedLang}). Translating...`);
-    textToAnalyze = await translateToEnglish(text, detectedLang);
-    wasTranslated = true;
-  }
-
-  // Step 3: Extract 3W1H
   const response = await client.chat.completions.create({
     model: "gpt-4o-mini",
     messages: [
       {
         role: "system",
         content: `You are a senior professional industrial analyst and management consultant. You extract 3W1H (What, Who, Where, When, How) data from text and produce detailed, structured, and corporate-grade analysis.
-Return ONLY a valid JSON array of objects. No intro or explanation.
-Each object MUST have ALL of these fields:
 
---- Standard 3W1H fields (for First Investigation Report — keep these SHORT and CONCISE) ---
-- what: What happened or what is the issue? SHORT answer, max 1-2 sentences, raw extracted fact only.
-- from: Origin, starting point, or initial state. SHORT — 1 sentence or a number/metric only.
-- to: Result, destination, or target state. SHORT — 1 sentence or a number/metric only.
-- when: ACTION PLAN TIMELINE. When will the action be completed? (e.g., "By end of Q1 2026", "Within 2 weeks"). DO NOT use the time the issue occurred.
-- who: People, teams, or parties involved in the ACTION. SHORT — names, roles, or departments only.
-- how: Method, cause, or action taken. SHORT answer, max 1-2 sentences, raw extracted fact only.
+TASK:
+1. Detect the language of the input text.
+2. If the language is NOT English, translate the information to English for the analysis fields.
+3. Extract 3W1H data and group related observations.
+4. Return ONLY a valid JSON object with this structure:
+{
+  "detectedLanguage": "ISO 639-1 code (e.g., 'en', 'kn', 'hi')",
+  "wasTranslated": true/false,
+  "translatedText": "Full text translated to English (null if already English)",
+  "rows": [
+    {
+      "what": "SHORT raw extracted fact (1-2 sentences)",
+      "from": "Origin/initial state (SHORT)",
+      "to": "Result/target state (SHORT)",
+      "when": "ACTION PLAN DEADLINE (e.g. 'By end of Q1')",
+      "who": "Teams/People involved in action",
+      "how": "Method/Action taken (SHORT)",
+      "problem": "Professional problem statement (25-30 words)",
+      "actionPlan": "Professional action plan (25-30 words, 2 steps)",
+      "fromNumeric": "Starting metric with qualifier (1 sentence)",
+      "toNumeric": "Target metric with qualifier (1 sentence)",
+      "summary": "Executive summary (150-200 words)"
+    }
+  ]
+}
 
---- Professional Investigation Analysis ( 3W1H ) fields ---
-- problem: A concise professional problem statement (exactly 25-30 words). Rephrase the raw "what" professionally. MUST be between 25 and 30 words.
-- actionPlan: A concise professional action plan (exactly 25-30 words, 2 numbered steps). MUST be between 25 and 30 words.
-- fromNumeric: The starting metric with a brief professional qualifier (1 sentence).
-- toNumeric: The target metric with a brief professional qualifier (1 sentence).
-- summary: A concise executive summary (150-200 words) covering What, How, From, and To.
-
-CRITICAL INSTRUCTIONS:
-1. CONSOLIDATION: Group all related observations into a single analysis row. DO NOT create multiple rows for the same overarching issue (e.g., if multiple sentences refer to "manpower shortage", create only ONE row).
-2. TIMELINE: The "when" field MUST indicate the DEADLINE or DURATION of the Action Plan.
-3. LANGUAGE: Use formal, senior-consultant-grade English.
-
-${wasTranslated ? "Note: This text was translated from another language. Extract the information accurately." : ""}`
+CRITICAL: 
+- Group all related observations into a single analysis row.
+- "when" MUST be the deadline for the action plan, not the time of the incident.
+- Return ONLY JSON.`
       },
       {
         role: "user",
-        content: `Extract the 3W1H analysis from the following text:
-"${textToAnalyze}"`
+        content: `Analyze the following text professionally:\n"${text}"`
       }
     ],
-    temperature: 0.4,
-    max_tokens: 8192
+    temperature: 0.3,
+    max_tokens: 8192,
+    response_format: { type: "json_object" }
   });
 
-  const raw = response.choices[0].message.content;
-  const cleaned = cleanJson(raw);
-
-  let parsed;
-  try {
-    parsed = JSON.parse(cleaned);
-  } catch (parseErr) {
-    throw new Error("AI returned invalid JSON: " + parseErr.message);
-  }
-
-  // ✅ FORCE ARRAY
-  if (!Array.isArray(parsed)) {
-    if (parsed && typeof parsed === 'object') {
-      for (const key of Object.keys(parsed)) {
-        if (Array.isArray(parsed[key])) {
-          parsed = parsed[key];
-          break;
-        }
-      }
-    }
-    if (!Array.isArray(parsed)) {
-      throw new Error("AI did not return array");
-    }
-  }
+  const parsed = JSON.parse(response.choices[0].message.content);
+  console.log("✅ CONSOLIDATED AI ANALYSIS COMPLETE. Detected:", parsed.detectedLanguage);
 
   return {
-    rows: parsed,
-    detectedLanguage: detectedLang,
-    wasTranslated,
+    rows: parsed.rows || [],
+    detectedLanguage: parsed.detectedLanguage || "en",
+    wasTranslated: parsed.wasTranslated || false,
     originalText: text,
-    translatedText: wasTranslated ? textToAnalyze : null
+    translatedText: parsed.translatedText || (parsed.wasTranslated ? text : null)
   };
 }
+
 

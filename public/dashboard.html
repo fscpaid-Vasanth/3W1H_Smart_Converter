@@ -145,8 +145,8 @@
             <li>✔ Audio Upload (20 Credits)</li>
             <li>✔ Live Audio (30 Credits)</li>
           </ul>
-          <button onclick="startSubscription('plan_SGJ9lQs5QEKndd')"
-            class="w-full bg-blue-600 text-white py-1 rounded text-sm">
+          <button id="btn_plan_SJ7ZNktTUB9PNr" onclick="startSubscription('plan_SJ7ZNktTUB9PNr')"
+            class="w-full bg-blue-600 text-white py-1 rounded text-sm subscription-btn">
             Subscribe
           </button>
         </div>
@@ -161,8 +161,8 @@
             <li>✔ Priority Processing</li>
             <li>✔ Unlimited Exports</li>
           </ul>
-          <button onclick="startSubscription('plan_SGJCJCot5JdhOo')"
-            class="w-full bg-green-600 text-white py-1 rounded text-sm">
+          <button id="btn_plan_SJ7azBfqgFOu3R" onclick="startSubscription('plan_SJ7azBfqgFOu3R')"
+            class="w-full bg-green-600 text-white py-1 rounded text-sm subscription-btn">
             Subscribe
           </button>
         </div>
@@ -177,8 +177,8 @@
             <li>✔ Dedicated Support</li>
             <li>✔ Custom Integrations</li>
           </ul>
-          <button onclick="startSubscription('plan_SGJDEt9DtLott3')"
-            class="w-full bg-purple-600 text-white py-1 rounded text-sm">
+          <button id="btn_plan_SJ7c3ilphWBQmh" onclick="startSubscription('plan_SJ7c3ilphWBQmh')"
+            class="w-full bg-purple-600 text-white py-1 rounded text-sm subscription-btn">
             Subscribe
           </button>
         </div>
@@ -500,6 +500,9 @@
       if (!(await deduct(cost))) return;
 
       show("Processing…");
+      const originalBtnText = convertBtn.innerText;
+      convertBtn.innerText = "Processing...";
+      convertBtn.disabled = true;
       let data;
 
       try {
@@ -538,6 +541,8 @@
         alert("Conversion failed: " + e.message);
       }
       hide();
+      convertBtn.innerText = originalBtnText;
+      convertBtn.disabled = false;
     };
 
     /* ===== LIVE AUDIO ===== */
@@ -638,6 +643,10 @@
       show("Analyzing live audio…");
 
       try {
+        const originalStopText = stopRec.innerText;
+        stopRec.innerText = "Analyzing...";
+        stopRec.disabled = true;
+
         const apiBase = window.API_BASE_URL || "";
         const fd = new FormData();
         fd.append("audio", blob, "live." + (blob.type.split("/")[1]?.split(";")[0] || "webm"));
@@ -678,8 +687,11 @@
       } catch (e) {
         console.error("❌ LIVE AUDIO ERROR:", e);
         alert("Live audio failed: " + e.message);
+      } finally {
+        stopRec.innerText = "Stop Recording";
+        stopRec.disabled = true; // Stay disabled until next recording starts
+        hide();
       }
-      hide();
     }
 
     /* ===== RENDER ===== */
@@ -881,7 +893,17 @@
   <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
   <script>
     async function startSubscription(planId) {
+      const btn = document.getElementById("btn_" + planId);
+      const originalText = btn ? btn.innerText : "Subscribe";
+
       try {
+        if (btn) {
+          btn.innerText = "Initializing...";
+          btn.disabled = true;
+          // Disable all other sub buttons to prevent double clicks
+          document.querySelectorAll('.subscription-btn').forEach(b => b.disabled = true);
+        }
+
         const apiBase = window.API_BASE_URL || "";
         const res = await fetch(apiBase + "/api/subscription/create", {
           method: "POST",
@@ -889,11 +911,14 @@
           body: JSON.stringify({ planId })
         });
 
-        if (!res.ok) throw new Error("Failed to create subscription");
+        if (!res.ok) {
+          const errData = await res.json();
+          throw new Error(errData.error || "Failed to create subscription");
+        }
         const sub = await res.json();
 
         const options = {
-          key: "rzp_test_SGIiAzizfrBnv8",
+          key: window.RAZORPAY_KEY_ID || "rzp_test_SGIiAzizfrBnv8",
           subscription_id: sub.subscriptionId,
           name: "3W1H Smart Converter",
           description: "Subscription Plan",
@@ -929,8 +954,15 @@
         const rzp = new Razorpay(options);
         rzp.open();
       } catch (err) {
-        console.error(err);
-        alert("Payment initialization failed.");
+        console.error("❌ SUBSCRIPTION ERROR:", err);
+        // Show the detailed error from the backend if available
+        const msg = err.message || "Unknown error";
+        alert("Payment initialization failed:\n\n" + msg + (err.details ? "\n\nDetails: " + err.details : ""));
+      } finally {
+        if (btn) {
+          btn.innerText = originalText;
+          document.querySelectorAll('.subscription-btn').forEach(b => b.disabled = false);
+        }
       }
     }
 

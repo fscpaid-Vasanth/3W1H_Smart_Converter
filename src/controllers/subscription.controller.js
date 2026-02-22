@@ -1,17 +1,11 @@
 import Razorpay from "razorpay";
 import admin from "firebase-admin";
+import { PLANS } from "../config/plans.config.js";
 
 const razorpay = new Razorpay({
   key_id: process.env.RAZORPAY_KEY_ID,
   key_secret: process.env.RAZORPAY_KEY_SECRET
 });
-
-// Plan definitions — UPDATE THESE when switching to live mode
-const PLANS = {
-  "plan_SGJ9lQs5QEKndd": { name: "Basic", credits: 500 },
-  "plan_SGJCJCot5JdhOo": { name: "Pro", credits: 1200 },
-  "plan_SGJDEt9DtLott3": { name: "Premium", credits: -1 } // -1 = unlimited
-};
 
 // ===== FIRESTORE STORAGE =====
 // All subscriptions are stored in Firestore per user (no shared in-memory fallback)
@@ -108,8 +102,16 @@ export const createSubscription = async (req, res) => {
       subscriptionId: subscription.id
     });
   } catch (err) {
-    console.error("SUBSCRIPTION CREATE ERROR:", err);
-    res.status(500).json({ error: "Subscription creation failed" });
+    console.error("❌ SUBSCRIPTION CREATE ERROR (RAW):", err);
+    console.error("❌ SUBSCRIPTION CREATE ERROR (JSON):", JSON.stringify(err, null, 2));
+
+    // Razorpay errors often have 'description' and 'metadata'
+    const errorMsg = err.description || err.message || "Razorpay API error";
+    res.status(500).json({
+      error: errorMsg,
+      details: err.description || null,
+      code: err.code || null
+    });
   }
 };
 

@@ -1,5 +1,6 @@
 import crypto from "crypto";
 import admin from "firebase-admin";
+import { getPlanNameById } from "../config/plans.config.js";
 
 export const razorpayWebhook = async (req, res) => {
   const secret = process.env.RAZORPAY_WEBHOOK_SECRET;
@@ -17,7 +18,8 @@ export const razorpayWebhook = async (req, res) => {
   }
 
   // Verify webhook signature
-  const body = JSON.stringify(req.body);
+  // We use req.rawBody captured in app.js for robust verification
+  const body = req.rawBody || JSON.stringify(req.body);
   const expectedSignature = crypto
     .createHmac("sha256", secret)
     .update(body)
@@ -41,13 +43,7 @@ export const razorpayWebhook = async (req, res) => {
       console.log("✅ Subscription Activated:", subEntity.id, "User:", userId);
 
       if (userId) {
-        // Map planId to Plan Name
-        const PLANS = {
-          "plan_SGJ9lQs5QEKndd": "Basic",
-          "plan_SGJCJCot5JdhOo": "Pro",
-          "plan_SGJDEt9DtLott3": "Premium"
-        };
-        const planName = PLANS[subEntity.plan_id] || "Unknown Plan";
+        const planName = getPlanNameById(subEntity.plan_id);
 
         // Update Firestore with active subscription
         await db.collection("subscriptions").doc(userId).set({
