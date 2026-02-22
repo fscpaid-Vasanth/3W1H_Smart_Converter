@@ -3,10 +3,7 @@ import {
   createSubscription,
   getSubscriptionStatus,
   activateSubscription,
-  deductCredits,
-  pauseSubscription,
-  resumeSubscription,
-  cancelSubscription
+  deductCredits
 } from "../controllers/subscription.controller.js";
 
 
@@ -17,10 +14,6 @@ router.post("/activate", activateSubscription);
 router.post("/deduct-credits", deductCredits);
 
 router.get("/status", getSubscriptionStatus);
-
-router.post("/pause", pauseSubscription);
-router.post("/resume", resumeSubscription);
-router.post("/cancel", cancelSubscription);
 
 export default router;
 
