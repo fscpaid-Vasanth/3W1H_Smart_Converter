@@ -87,26 +87,34 @@ export const createSubscription = async (req, res) => {
   try {
     const { planId } = req.body;
     const userId = req.user.uid;
+    const plan = PLANS[planId];
 
-    const subscription = await razorpay.subscriptions.create({
-      plan_id: planId,
-      customer_notify: 1,
-      total_count: 12,
+    if (!plan) {
+      return res.status(400).json({ error: "Invalid Plan ID" });
+    }
+
+    // Create One-time Order instead of Subscription
+    const order = await razorpay.orders.create({
+      amount: plan.price * 100, // INR in paise
+      currency: "INR",
+      receipt: `receipt_${userId.slice(0, 5)}_${Date.now()}`,
       notes: {
         userId: userId,
+        planId: planId,
+        planName: plan.name,
         email: req.user.email
       }
     });
 
     return res.json({
-      subscriptionId: subscription.id
+      orderId: order.id,
+      amount: order.amount
     });
   } catch (err) {
-    console.error("❌ SUBSCRIPTION CREATE ERROR (RAW):", err);
-    console.error("❌ SUBSCRIPTION CREATE ERROR (JSON):", JSON.stringify(err, null, 2));
+    console.error("❌ ORDER CREATE ERROR (RAW):", err);
+    console.error("❌ ORDER CREATE ERROR (JSON):", JSON.stringify(err, null, 2));
 
-    // Razorpay errors often have 'description' and 'metadata'
-    const errorMsg = err.description || err.message || "Razorpay API error";
+    const errorMsg = err.description || err.message || "Order creation failed";
     res.status(500).json({
       error: errorMsg,
       details: err.description || null,
@@ -304,6 +312,7 @@ export const deductCredits = async (req, res) => {
 /**
  * PAUSE SUBSCRIPTION
  */
+/*
 export const pauseSubscription = async (req, res) => {
   try {
     const { subscriptionId } = req.body;
@@ -323,10 +332,12 @@ export const pauseSubscription = async (req, res) => {
     res.status(500).json({ error: "Failed to pause subscription" });
   }
 };
+*/
 
 /**
  * RESUME SUBSCRIPTION
  */
+/*
 export const resumeSubscription = async (req, res) => {
   try {
     const { subscriptionId } = req.body;
@@ -344,10 +355,12 @@ export const resumeSubscription = async (req, res) => {
     res.status(500).json({ error: "Failed to resume subscription" });
   }
 };
+*/
 
 /**
  * CANCEL SUBSCRIPTION
  */
+/*
 export const cancelSubscription = async (req, res) => {
   try {
     const { subscriptionId } = req.body;
@@ -372,3 +385,4 @@ export const cancelSubscription = async (req, res) => {
     res.status(500).json({ error: "Failed to cancel subscription" });
   }
 };
+*/

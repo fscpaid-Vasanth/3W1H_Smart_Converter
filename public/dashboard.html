@@ -913,37 +913,41 @@
 
         if (!res.ok) {
           const errData = await res.json();
-          throw new Error(errData.error || "Failed to create subscription");
+          throw new Error(errData.error || "Failed to create order");
         }
-        const sub = await res.json();
+        const data = await res.json();
 
         const options = {
           key: window.RAZORPAY_KEY_ID || "rzp_test_SGIiAzizfrBnv8",
-          subscription_id: sub.subscriptionId,
+          order_id: data.orderId,
           name: "3W1H Smart Converter",
-          description: "Subscription Plan",
+          description: "One-time Top-up",
           handler: async function (response) {
             // Activate the plan on the server
             try {
               const activateRes = await fetch(apiBase + "/api/subscription/activate", {
                 method: "POST",
                 headers: { "Content-Type": "application/json", "Authorization": "Bearer " + authToken },
-                body: JSON.stringify({ planId: planId, paymentId: response.razorpay_payment_id })
+                body: JSON.stringify({
+                  planId: planId,
+                  paymentId: response.razorpay_payment_id,
+                  orderId: response.razorpay_order_id
+                })
               });
               const activateData = await activateRes.json();
               console.log("✅ Activation response:", activateData);
 
               if (!activateRes.ok) {
-                alert("Payment received but plan activation failed. Please contact support.");
+                alert("Payment received but account update failed. Please contact support.");
                 return;
               }
             } catch (e) {
               console.error("Activate error:", e);
-              alert("Payment received but activation failed. Please refresh the page.");
+              alert("Payment received but update failed. Please refresh the page.");
               return;
             }
 
-            alert("🎉 Subscription Successful! Your plan has been upgraded.");
+            alert("🎉 Recharge Successful! Your credits have been updated.");
             closeSubscription();
             // Small delay to let Firestore write complete
             setTimeout(() => loadSubscription(), 500);
